@@ -115,95 +115,92 @@ df_clust['km_cluster'] = km_cluster
 df_clust['km_cluster'] = df_clust['km_cluster'].map({0:1, 1:3, 2:2, 3:0})
 # print(df_clust)
 
+data_drop = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left')
+
 # visualizing result of kmeans clustering
-n_c = len(np.unique(df_clust.km_cluster)) 
+# n_c = len(np.unique(df_clust.km_cluster)) 
 
-# fig = plt.figure(figsize = (20,8))
-# for c in range(n_c):
-#     temp = df_clust[df_clust.km_cluster == c]
-#     plt.subplot(n_c,2,2*c+1)
-#     for i in range(len(temp)):
-#         plt.plot(temp.iloc[i,1:8], linewidth=0.7, )
-#         plt.title(f'cluster{c}')
-#         plt.xlabel('')
-#         plt.xticks([])
-#     plt.subplot(n_c,2,2*c+2)
-#     for i in range(len(temp)):
-#         plt.plot(temp.iloc[i,8:-6], linewidth=0.7)
-#         plt.title(f'cluster{c}')
-#         plt.xlabel('')
-#         plt.xticks([])
-# plt.savefig("/Users/baeksumin/apps/electricity/image/test.png")
+fig = plt.figure(figsize = (20, 4))
+for c in range(4):
+    temp = data_drop[data_drop.km_cluster == c]
+    temp = temp.groupby(['weekday', 'time'])['전력사용량(kWh)'].median().reset_index().pivot('weekday', 'time', '전력사용량(kWh)')
+    plt.subplot(1, 5, c+1)
+    sns.heatmap(temp)
+    plt.title(f'cluster {c}')
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.yticks([])
+plt.savefig("/Users/baeksumin/apps/electricity/image/test1.png")
 
 
-# train_ = train_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left')
-# # print(train_)
+train_ = train_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left')
+# print(train_)
 
-# df0 = train_[train_.km_cluster == 0]
-# df1 = train_[train_.km_cluster == 1]
-# df2 = train_[train_.km_cluster == 2]
-# df3 = train_[train_.km_cluster == 3]
-# # 군집별로 데이터프레임을 분리하였다 !! ------------------------------------------------------------------------
+df0 = train_[train_.km_cluster == 0]
+df1 = train_[train_.km_cluster == 1]
+df2 = train_[train_.km_cluster == 2]
+df3 = train_[train_.km_cluster == 3]
+# 군집별로 데이터프레임을 분리하였다 !! ------------------------------------------------------------------------
 
-# '''
-# # prophet이 포맷으로 rename 
-# train_drop['datetime'] = pd.to_datetime(train_drop['date'].str.cat(train_drop['time'], sep='-'))
-# print(train_drop)
-# data = data[['num', 'date_time', 'date', 'time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '강수량(mm)', '일조(hr)', '비전기냉방설비운영', '태양광보유' ]]
-# '''
+'''
+# prophet이 포맷으로 rename 
+train_drop['datetime'] = pd.to_datetime(train_drop['date'].str.cat(train_drop['time'], sep='-'))
+print(train_drop)
+data = data[['num', 'date_time', 'date', 'time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '강수량(mm)', '일조(hr)', '비전기냉방설비운영', '태양광보유' ]]
+'''
 
-# # # 휴일 데이터 가져오기 (공공데이터포털 API사용)
-# # def print_whichday(year, month, day) :
-# #     r = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
-# #     aday = dt.date(year, month, day)
-# #     bday = aday.weekday()
-# #     return r[bday]
+# 휴일 데이터 가져오기 (공공데이터포털 API사용)
+def print_whichday(year, month, day) :
+    r = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
+    aday = dt.date(year, month, day)
+    bday = aday.weekday()
+    return r[bday]
 
-# # def get_request_query(url, operation, params, serviceKey):
-# #     import urllib.parse as urlparse
-# #     params = urlparse.urlencode(params)
-# #     request_query = url + '/' + operation + '?' + params + '&' + 'serviceKey' + '=' + serviceKey
-# #     return request_query
+def get_request_query(url, operation, params, serviceKey):
+    import urllib.parse as urlparse
+    params = urlparse.urlencode(params)
+    request_query = url + '/' + operation + '?' + params + '&' + 'serviceKey' + '=' + serviceKey
+    return request_query
 
-# # year = 2020
-# # mykey = "VygvqzZz%2FxRZ%2Bp3i119xUZJ1i2EY%2FIrsCPR0Hgtdggi6ha%2FiL4F7oKwutUm26UkjD188qyIp8WZk70a1bGqdwg%3D%3D"
+year = 2020
+mykey = "VygvqzZz%2FxRZ%2Bp3i119xUZJ1i2EY%2FIrsCPR0Hgtdggi6ha%2FiL4F7oKwutUm26UkjD188qyIp8WZk70a1bGqdwg%3D%3D"
 
-# # date_name = []
-# # loc_date = []
-# # for month in range(6,9):
+date_name = []
+loc_date = []
+for month in range(6,9):
 
-# #     month = '0' + str(month)
+    month = '0' + str(month)
     
-# #     url = 'http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService'
-# #     operation = 'getRestDeInfo'
-# #     params = {'solYear':year, 'solMonth':month}
+    url = 'http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService'
+    operation = 'getRestDeInfo'
+    params = {'solYear':year, 'solMonth':month}
 
-# #     request_query = get_request_query(url, operation, params, mykey)
-# #     get_data = requests.get(request_query)    
+    request_query = get_request_query(url, operation, params, mykey)
+    get_data = requests.get(request_query)    
 
-# #     if True == get_data.ok:
-# #         soup = BeautifulSoup(get_data.content, 'html.parser')        
+    if True == get_data.ok:
+        soup = BeautifulSoup(get_data.content, 'html.parser')        
         
-# #         item = soup.findAll('item')
-# #         #print(item);
+        item = soup.findAll('item')
+        #print(item);
 
-# #         for i in item:
-# #             day = int(i.locdate.string[-2:])
-# #             weekname = print_whichday(int(year), int(month), day)
-# #             locdate = str(i.locdate.string)
-# #             datename = str(i.datename.string)
-# #             loc_date.append(locdate)
-# #             date_name.append(datename)
-# # print(loc_date)
-# # print(date_name)            
-# # # 20200606, 20200815, 20200817 공휴일 확인
+        for i in item:
+            day = int(i.locdate.string[-2:])
+            weekname = print_whichday(int(year), int(month), day)
+            locdate = str(i.locdate.string)
+            datename = str(i.datename.string)
+            loc_date.append(locdate)
+            date_name.append(datename)
+print(loc_date)
+print(date_name)            
+# 20200606, 20200815, 20200817 공휴일 확인
 
-# # # prophet이 원하는 형태로 공휴일 데이터 가공
-# # def holidays_to_df():
-# #     holidays = pd.DataFrame({
-# #         'holiday' : date_name,
-# #         'ds' : loc_date,
-# #         'lower_window' : 0,
-# #         'upper_window' : 0
-# #     })
-# #     return holidays
+# prophet이 원하는 형태로 공휴일 데이터 가공
+def holidays_to_df():
+    holidays = pd.DataFrame({
+        'holiday' : date_name,
+        'ds' : loc_date,
+        'lower_window' : 0,
+        'upper_window' : 0
+    })
+    return holidays
