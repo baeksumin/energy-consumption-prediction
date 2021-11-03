@@ -120,34 +120,48 @@ data_drop = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'l
 # visualizing result of kmeans clustering
 # n_c = len(np.unique(df_clust.km_cluster)) 
 
-fig = plt.figure(figsize = (20, 4))
-for c in range(4):
-    temp = data_drop[data_drop.km_cluster == c]
-    temp = temp.groupby(['weekday', 'time'])['전력사용량(kWh)'].median().reset_index().pivot('weekday', 'time', '전력사용량(kWh)')
-    plt.subplot(1, 5, c+1)
-    sns.heatmap(temp)
-    plt.title(f'cluster {c}')
-    plt.xlabel('')
-    plt.ylabel('')
-    plt.yticks([])
-plt.savefig("/Users/baeksumin/apps/electricity/image/test1.png")
+
+# fig = plt.figure(figsize = (20, 4))
+# for c in range(4):
+#     temp = data_drop[data_drop.km_cluster == c]
+#     temp = temp.groupby(['weekday', 'time'])['전력사용량(kWh)'].median().reset_index().pivot('weekday', 'time', '전력사용량(kWh)')
+#     plt.subplot(1, 5, c+1)
+#     sns.heatmap(temp)
+#     plt.title(f'cluster {c}')
+#     plt.xlabel('')
+#     plt.ylabel('')
+#     plt.yticks([])
+# plt.savefig("/Users/baeksumin/apps/electricity/image/test1.png")
 
 
-train_ = train_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left')
+train_ = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left')
 # print(train_)
 
-df0 = train_[train_.km_cluster == 0]
-df1 = train_[train_.km_cluster == 1]
-df2 = train_[train_.km_cluster == 2]
-df3 = train_[train_.km_cluster == 3]
+
+# prophet이 포맷으로 rename 
+# train_['datetime'] = pd.to_datetime(train_['date'].str.cat(train_['time'], sep='-'))
+# print(train_)
+# data = data[['num', 'date_time', 'date', 'time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '강수량(mm)', '일조(hr)', '비전기냉방설비운영', '태양광보유' ]]
+# print(data)
+
+last_data = data_drop[['date_time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '일조(hr)', '불쾌지수', '체감온도','비전기냉방설비운영', '태양광보유', 'km_cluster']]
+last_data = last_data.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8'})
+print(last_data)
+
+# df0 = last_data[last_data.km_cluster_x == 0].loc[:112319]
+# df0_test = last_data[last_data.km_cluster_x == 0].loc[112320:]
+
+# df1 = last_data[last_data.km_cluster_x == 1].loc[:112319]
+# df1_test = last_data[last_data.km_cluster_x == 1].loc[112320:]
+
+# df2 = last_data[last_data.km_cluster_x == 2].loc[:112319]
+# df2_test = last_data[last_data.km_cluster_x == 2].loc[112320:]
+
+# df3 = last_data[last_data.km_cluster_x == 3].loc[:112319]
+# df3_test = last_data[last_data.km_cluster_x == 3].loc[112320:]
+
 # 군집별로 데이터프레임을 분리하였다 !! ------------------------------------------------------------------------
 
-'''
-# prophet이 포맷으로 rename 
-train_drop['datetime'] = pd.to_datetime(train_drop['date'].str.cat(train_drop['time'], sep='-'))
-print(train_drop)
-data = data[['num', 'date_time', 'date', 'time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '강수량(mm)', '일조(hr)', '비전기냉방설비운영', '태양광보유' ]]
-'''
 
 # 휴일 데이터 가져오기 (공공데이터포털 API사용)
 def print_whichday(year, month, day) :
