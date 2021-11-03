@@ -148,17 +148,17 @@ last_data = data_drop[['date_time', '전력사용량(kWh)', '기온(°C)', '풍�
 last_data = last_data.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8'})
 print(last_data)
 
-# df0 = last_data[last_data.km_cluster_x == 0].loc[:112319]
-# df0_test = last_data[last_data.km_cluster_x == 0].loc[112320:]
+df0 = last_data[last_data.km_cluster_x == 0].loc[:112319]
+df0_test = last_data[last_data.km_cluster_x == 0].loc[112320:]
 
-# df1 = last_data[last_data.km_cluster_x == 1].loc[:112319]
-# df1_test = last_data[last_data.km_cluster_x == 1].loc[112320:]
+df1 = last_data[last_data.km_cluster_x == 1].loc[:112319]
+df1_test = last_data[last_data.km_cluster_x == 1].loc[112320:]
 
-# df2 = last_data[last_data.km_cluster_x == 2].loc[:112319]
-# df2_test = last_data[last_data.km_cluster_x == 2].loc[112320:]
+df2 = last_data[last_data.km_cluster_x == 2].loc[:112319]
+df2_test = last_data[last_data.km_cluster_x == 2].loc[112320:]
 
-# df3 = last_data[last_data.km_cluster_x == 3].loc[:112319]
-# df3_test = last_data[last_data.km_cluster_x == 3].loc[112320:]
+df3 = last_data[last_data.km_cluster_x == 3].loc[:112319]
+df3_test = last_data[last_data.km_cluster_x == 3].loc[112320:]
 
 # 군집별로 데이터프레임을 분리하였다 !! ------------------------------------------------------------------------
 
@@ -218,3 +218,14 @@ def holidays_to_df():
         'upper_window' : 0
     })
     return holidays
+
+
+# default model
+
+model = Prophet(
+    yearly_seasonality = False,
+    holidays = holidays_to_df(),
+).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)
+model.fit(df0)
+
+
