@@ -144,21 +144,22 @@ train_ = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left
 # data = data[['num', 'date_time', 'date', 'time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '강수량(mm)', '일조(hr)', '비전기냉방설비운영', '태양광보유' ]]
 # print(data)
 
+
 last_data = data_drop[['date_time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '일조(hr)', '불쾌지수', '체감온도','비전기냉방설비운영', '태양광보유', 'km_cluster']]
-last_data = last_data.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8'})
-print(last_data)
+last_data = last_data.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8', 'km_cluster' : 'add9'})
+# print(last_data)
 
-df0 = last_data[last_data.km_cluster_x == 0].loc[:112319]
-df0_test = last_data[last_data.km_cluster_x == 0].loc[112320:]
+df0 = last_data[last_data.add9 == 0].loc[:112319]
+df0_test = last_data[last_data.add9 == 0].loc[112320:]
 
-df1 = last_data[last_data.km_cluster_x == 1].loc[:112319]
-df1_test = last_data[last_data.km_cluster_x == 1].loc[112320:]
+df1 = last_data[last_data.add9 == 1].loc[:112319]
+df1_test = last_data[last_data.add9 == 1].loc[112320:]
 
-df2 = last_data[last_data.km_cluster_x == 2].loc[:112319]
-df2_test = last_data[last_data.km_cluster_x == 2].loc[112320:]
+df2 = last_data[last_data.add9 == 2].loc[:112319]
+df2_test = last_data[last_data.add9 == 2].loc[112320:]
 
-df3 = last_data[last_data.km_cluster_x == 3].loc[:112319]
-df3_test = last_data[last_data.km_cluster_x == 3].loc[112320:]
+df3 = last_data[last_data.add9 == 3].loc[:112319]
+df3_test = last_data[last_data.add9 == 3].loc[112320:]
 
 # 군집별로 데이터프레임을 분리하였다 !! ------------------------------------------------------------------------
 
@@ -205,8 +206,8 @@ for month in range(6,9):
             datename = str(i.datename.string)
             loc_date.append(locdate)
             date_name.append(datename)
-print(loc_date)
-print(date_name)            
+# print(loc_date)
+# print(date_name)            
 # 20200606, 20200815, 20200817 공휴일 확인
 
 # prophet이 원하는 형태로 공휴일 데이터 가공
@@ -219,12 +220,14 @@ def holidays_to_df():
     })
     return holidays
 
+holiday = holidays_to_df()
+
 
 # default model
 
 model = Prophet(
     yearly_seasonality = False,
-    holidays = holidays_to_df(),
+    holidays = holiday,
 ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)
 model.fit(df0)
 
