@@ -7,6 +7,7 @@ import numpy as np
 import datetime as dt
 from sklearn.cluster import KMeans
 from sklearn.metrics import classification_report
+from sklearn.metrics import accuracy_score
 import requests
 from bs4 import BeautifulSoup
 from prophet import Prophet
@@ -38,9 +39,6 @@ data_sort = data.sort_values(by=["num", "date"], ascending=[True, True], ignore_
 # hm = sns.heatmap(data_corr.corr(), annot = True, vmin=-1, vmax=1, center= 0, cmap= 'coolwarm')
 # # hm.get_figure().savefig("/Users/baeksumin/apps/electricity/image/heatmap.png")
 
-# # train, test 데이터 분할
-# train = data_sort.loc[:112319] # 20200601~20200817
-# test = data_sort.loc[112320:] # 20200818~20200824
 
 # 필요한 컬럼 추가
 data['불쾌지수'] = (0.81 * data.loc[:, '기온(°C)'] + 0.01 * data['습도(%)'] * (0.99 * data['기온(°C)'] - 14.3) + 46.3).round(1)
@@ -147,34 +145,46 @@ train_ = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left
 
 last_data = data_drop[['num', 'date_time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '일조(hr)', '불쾌지수', '체감온도','비전기냉방설비운영', '태양광보유', 'km_cluster']]
 last_data = last_data.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8', 'km_cluster' : 'add9'})
-# print(last_data.head(50))
 
-# 함수화해보자..
-df0 = last_data[last_data.add9 == 0]
-df0_sort = df0.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
-df0_drop = df0_sort.drop(['num'], axis = 1)
-df0_train = df0_drop.loc[:69263] # 20200601~20200817
-df0_test = df0_drop.loc[69264:] # 20200818~20200824
+last_data = last_data.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
 
-df1 = last_data[last_data.add9 == 1]
-df1_sort = df1.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
-df1_drop = df1_sort.drop(['num'], axis = 1)
-df1_train = df1_drop.loc[:24335] # 20200601~20200817
-df1_test = df1_drop.loc[24336:] # 20200818~20200824
 
-df2 = last_data[last_data.add9 == 2]
-df2_sort = df2.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
-df2_drop = df2_sort.drop(['num'], axis = 1)
-df2_train = df2_drop.loc[:11231] # 20200601~20200817
-df2_test = df2_drop.loc[11232:] # 20200818~20200824
+train = last_data.loc[:112319] # 20200601~20200817
+test = last_data.loc[112320:] # 20200818~20200824
 
-df3 = last_data[last_data.add9 == 3]
-df3_sort = df3.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
-df3_drop = df3_sort.drop(['num'], axis = 1)
-df3_train = df3_drop.loc[:7487] # 20200601~20200817
-df3_test = df3_drop.loc[7488:] # 20200818~20200824
+train_df_list = list([])
+test_df_list = list([])
+for i in range(0, 4):
+    train_df_list.append(train[train['add9'] == i].reset_index(drop = True).iloc[:, 1:])
+    test_df_list.append(test[test['add9'] == i].reset_index(drop = True).iloc[:, 1:])
 
-# 군집별로 데이터프레임을 분리하였다 !! ------------------------------------------------------------------------
+
+# # 함수화해보자..
+# df0 = last_data[last_data.add9 == 0]
+# df0_sort = df0.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
+# df0_drop = df0_sort.drop(['num'], axis = 1)
+# df0_train = df0_drop.loc[:69263] # 20200601~20200817
+# df0_test = df0_drop.loc[69264:] # 20200818~20200824
+
+# df1 = last_data[last_data.add9 == 1]
+# df1_sort = df1.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
+# df1_drop = df1_sort.drop(['num'], axis = 1)
+# df1_train = df1_drop.loc[:24335] # 20200601~20200817
+# df1_test = df1_drop.loc[24336:] # 20200818~20200824
+
+# df2 = last_data[last_data.add9 == 2]
+# df2_sort = df2.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
+# df2_drop = df2_sort.drop(['num'], axis = 1)
+# df2_train = df2_drop.loc[:11231] # 20200601~20200817
+# df2_test = df2_drop.loc[11232:] # 20200818~20200824
+
+# df3 = last_data[last_data.add9 == 3]
+# df3_sort = df3.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
+# df3_drop = df3_sort.drop(['num'], axis = 1)
+# df3_train = df3_drop.loc[:7487] # 20200601~20200817
+# df3_test = df3_drop.loc[7488:] # 20200818~20200824
+
+# # 군집별로 데이터프레임을 분리하였다 !! ------------------------------------------------------------------------
 
 
 # 휴일 데이터 가져오기 (공공데이터포털 API사용)
@@ -238,18 +248,20 @@ holiday = holidays_to_df()
 
 # default model
 
-# model = Prophet(
-#     yearly_seasonality = False,
-#     holidays = holiday,
-# ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)
-# model.fit(df0_train)
+for i in range(4):
+    model = Prophet(
+        yearly_seasonality = False,
+        holidays = holiday,
+    ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)
+    model.fit(train_df_list[i])
 
-# past = model.predict(df0_test)
-# y_true = list(df0_test['y'])
-# y_pred = list(past['yhat'])
-# MSE = np.square(np.subtract(y_true,y_pred)).mean() 
-# print(MSE) # default 모델 사용했을때 5115003.44164709
-
-# df0, df1, df2, df3 전부 다 학습 가능하게.. for문 돌려서 해야돼
+    forecast = model.predict(test_df_list[i])
+    model.plot(forecast)
+    plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}.png'.format(i + 1))
+    y_true = list(test_df_list[i]['y'])
+    y_pred = list(forecast['yhat'])
+    MSE = np.square(np.subtract(y_true,y_pred)).mean() 
+    print(MSE) # default 모델 사용했을때 5115003.44164709
+   
 
 
