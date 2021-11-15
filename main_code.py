@@ -106,7 +106,6 @@ change_n_clusters([2,3,4,5,6,7,8,9,10,11], df.iloc[:,1:])
 # 그래프 확인 결과 최적 군집 수는 4로 결정
 
 
-
 kmeans = KMeans(n_clusters=4, random_state = 2)
 km_cluster = kmeans.fit_predict(df.iloc[:,1:])
 df_clust = df.copy()
@@ -245,6 +244,42 @@ def holidays_to_df():
 
 holiday = holidays_to_df()
 
+# 평가지표 (mse)
+def mse(true, pred):
+    return np.square(np.subtract(y_true,y_pred)).mean()
+
+# 최적값 추적
+def tuning(train, test, test_y, changepoint_prior_scale, seasonality_prior_scale, seasonality_mode, holidays_prior_scale, holidays_df):
+    headers = ['changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'smape']
+    smape_df = pd.DataFrame([], columns = headers)
+
+    for cps in changepoint_prior_scale:
+        for sps in seasonality_prior_scale:
+            for sm in seasonality_mode:
+                for hps in holidays_prior_scale:
+                    model = Prophet(
+                        changepoint_prior_scale = cps,
+                        seasonality_prior_scale = sps,
+                        seasonality_mode = sm,
+                        holidays_prior_scale = hps,
+                        holidays = holidays_df
+                    ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)\
+                        .add_regressor('add1')\
+                        .add_regressor('add2')\
+                        .add_regressor('add3')
+                    model.fit(train)
+
+                    past = model.predict(test)
+                    sma = mse(test_y, past['yhat'])
+                    sma_list = [cps, sps, sm, hps, sma]
+                    smape_df = smape_df.append(pd.Series(sma_list, index = headers), ignore_index = True)
+                    print('smape_df')
+                    print(smape_df)
+
+    min_smape = smape_df[smape_df['smape'] == smape_df['smape'].min()].reset_index(drop = True)
+
+    return smape_df, min_smape
+
 
 # default model
 
@@ -261,7 +296,8 @@ for i in range(4):
     y_true = list(test_df_list[i]['y'])
     y_pred = list(forecast['yhat'])
     MSE = np.square(np.subtract(y_true,y_pred)).mean() 
+    
     print(MSE) # default 모델 사용했을때 5115003.44164709
-   
+
 
 
