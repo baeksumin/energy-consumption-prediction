@@ -1,5 +1,7 @@
+''' import '''
 import pandas as pd
 import math
+import re
 import matplotlib.pyplot as plt 
 from matplotlib import rc
 import seaborn as sns
@@ -12,11 +14,113 @@ import requests
 from bs4 import BeautifulSoup
 from prophet import Prophet
 
+
+''' functions '''
+# 휴일 데이터 가져오기 (공공데이터포털 API사용)
+def print_whichday(year, month, day) :
+    r = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
+    aday = dt.date(year, month, day)
+    bday = aday.weekday()
+    return r[bday]
+
+def get_request_query(url, operation, params, serviceKey):
+    import urllib.parse as urlparse
+    params = urlparse.urlencode(params)
+    request_query = url + '/' + operation + '?' + params + '&' + 'serviceKey' + '=' + serviceKey
+    return request_query
+
+year = 2020
+mykey = "VygvqzZz%2FxRZ%2Bp3i119xUZJ1i2EY%2FIrsCPR0Hgtdggi6ha%2FiL4F7oKwutUm26UkjD188qyIp8WZk70a1bGqdwg%3D%3D"
+
+date_name = []
+loc_date = []
+for month in range(6,9):
+
+    month = '0' + str(month)
+    
+    url = 'http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService'
+    operation = 'getRestDeInfo'
+    params = {'solYear':year, 'solMonth':month}
+
+    request_query = get_request_query(url, operation, params, mykey)
+    get_data = requests.get(request_query)    
+
+    if True == get_data.ok:
+        soup = BeautifulSoup(get_data.content, 'html.parser')        
+        
+        item = soup.findAll('item')
+        #print(item);
+
+        for i in item:
+            day = int(i.locdate.string[-2:])
+            weekname = print_whichday(int(year), int(month), day)
+            locdate = str(i.locdate.string)
+            datename = str(i.datename.string)
+            loc_date.append(locdate)
+            date_name.append(datename)
+# print(loc_date)
+# print(date_name)            
+# 20200606, 20200815, 20200817 공휴일 확인
+
+# prophet이 원하는 형태로 공휴일 데이터 가공
+def holidays_to_df():
+    holidays = pd.DataFrame({
+        'holiday' : date_name,
+        'ds' : loc_date,
+        'lower_window' : 0,
+        'upper_window' : 0
+    })
+    return holidays
+
+holiday = holidays_to_df()
+
+# 평가지표 (mse)
+def mse(true, pred):
+    return np.square(np.subtract(y_true,y_pred)).mean()
+
+# 최적값 추적
+def tuning(train, test, test_y, changepoint_prior_scale, seasonality_prior_scale, seasonality_mode, holidays_prior_scale, holidays_df):
+    headers = ['changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'smape']
+    smape_df = pd.DataFrame([], columns = headers)
+
+    for cps in changepoint_prior_scale:
+        for sps in seasonality_prior_scale:
+            for sm in seasonality_mode:
+                for hps in holidays_prior_scale:
+                    model = Prophet(
+                        changepoint_prior_scale = cps,
+                        seasonality_prior_scale = sps,
+                        seasonality_mode = sm,
+                        holidays_prior_scale = hps,
+                        holidays = holidays_df
+                    ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)\
+                        .add_regressor('add1')\
+                        .add_regressor('add2')\
+                        .add_regressor('add3')
+                    model.fit(train)
+
+                    past = model.predict(test)
+                    sma = mse(test_y, past['yhat'])
+                    sma_list = [cps, sps, sm, hps, sma]
+                    smape_df = smape_df.append(pd.Series(sma_list, index = headers), ignore_index = True)
+                    print('smape_df')
+                    print(smape_df)
+
+    min_smape = smape_df[smape_df['smape'] == smape_df['smape'].min()].reset_index(drop = True)
+
+    return smape_df, min_smape
+
+
+
 pd.set_option('mode.chained_assignment',  None) # 경고 무시 설정
 pd.set_option('display.max_columns', 50) # 데이터 프레임 열 출력 범위 설정
 
 # 데이터 불러오기
 data = pd.read_csv('/Users/baeksumin/apps/electricity/dataset/energy.csv', encoding = 'cp949')
+
+from datetime import date
+today = date.today()
+today_ = re.sub('-', '', str(today))
 
 # 데이터 확인
 # data.info() 
@@ -185,100 +289,23 @@ for i in range(0, 4):
 
 # # 군집별로 데이터프레임을 분리하였다 !! ------------------------------------------------------------------------
 
+# tuning
+optimum_df = pd.DataFrame([], columns = ['num', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'smape'])
+for idx, val in enumerate(last_data):
+    ttrain = val[val['ds'] < '2020-08-18']
+    ttest = pd.DataFrame(val[val['ds'] >= '2020-08-18'].drop(['y'], axis = 1).reset_index(drop = True))
+    ttest_y = val[val['ds'] >= '2020-08-18']['y'].reset_index(drop = True)
 
-# 휴일 데이터 가져오기 (공공데이터포털 API사용)
-def print_whichday(year, month, day) :
-    r = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
-    aday = dt.date(year, month, day)
-    bday = aday.weekday()
-    return r[bday]
+    smape_df, min_smape = tuning(ttrain, ttest, ttest_y, [0.001, 0.01, 0.1, 0.5], [0.01, 0.1, 1, 10], ['additive', 'multiplicative'], [0.01, 0.1, 1, 10], holidays_df)
+    print('========================================== House {} result =========================================='.format(idx + 1))
+    print(min_smape)
+    print('=====================================================================================================')
+    smape_df.to_csv('/Users/baeksumin/apps/electricity/dataset/smape_df/house_{}_{}.csv'.format(idx + 1, today_), encoding = 'UTF-8', index = False)
+    num = pd.DataFrame([idx + 1], columns = ['num'])
+    num_min_smape = pd.concat([num, min_smape], axis = 1)
+    optimum_df = pd.concat([optimum_df, num_min_smape], axis = 0).reset_index(drop = True)
 
-def get_request_query(url, operation, params, serviceKey):
-    import urllib.parse as urlparse
-    params = urlparse.urlencode(params)
-    request_query = url + '/' + operation + '?' + params + '&' + 'serviceKey' + '=' + serviceKey
-    return request_query
-
-year = 2020
-mykey = "VygvqzZz%2FxRZ%2Bp3i119xUZJ1i2EY%2FIrsCPR0Hgtdggi6ha%2FiL4F7oKwutUm26UkjD188qyIp8WZk70a1bGqdwg%3D%3D"
-
-date_name = []
-loc_date = []
-for month in range(6,9):
-
-    month = '0' + str(month)
-    
-    url = 'http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService'
-    operation = 'getRestDeInfo'
-    params = {'solYear':year, 'solMonth':month}
-
-    request_query = get_request_query(url, operation, params, mykey)
-    get_data = requests.get(request_query)    
-
-    if True == get_data.ok:
-        soup = BeautifulSoup(get_data.content, 'html.parser')        
-        
-        item = soup.findAll('item')
-        #print(item);
-
-        for i in item:
-            day = int(i.locdate.string[-2:])
-            weekname = print_whichday(int(year), int(month), day)
-            locdate = str(i.locdate.string)
-            datename = str(i.datename.string)
-            loc_date.append(locdate)
-            date_name.append(datename)
-# print(loc_date)
-# print(date_name)            
-# 20200606, 20200815, 20200817 공휴일 확인
-
-# prophet이 원하는 형태로 공휴일 데이터 가공
-def holidays_to_df():
-    holidays = pd.DataFrame({
-        'holiday' : date_name,
-        'ds' : loc_date,
-        'lower_window' : 0,
-        'upper_window' : 0
-    })
-    return holidays
-
-holiday = holidays_to_df()
-
-# 평가지표 (mse)
-def mse(true, pred):
-    return np.square(np.subtract(y_true,y_pred)).mean()
-
-# 최적값 추적
-def tuning(train, test, test_y, changepoint_prior_scale, seasonality_prior_scale, seasonality_mode, holidays_prior_scale, holidays_df):
-    headers = ['changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'smape']
-    smape_df = pd.DataFrame([], columns = headers)
-
-    for cps in changepoint_prior_scale:
-        for sps in seasonality_prior_scale:
-            for sm in seasonality_mode:
-                for hps in holidays_prior_scale:
-                    model = Prophet(
-                        changepoint_prior_scale = cps,
-                        seasonality_prior_scale = sps,
-                        seasonality_mode = sm,
-                        holidays_prior_scale = hps,
-                        holidays = holidays_df
-                    ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)\
-                        .add_regressor('add1')\
-                        .add_regressor('add2')\
-                        .add_regressor('add3')
-                    model.fit(train)
-
-                    past = model.predict(test)
-                    sma = mse(test_y, past['yhat'])
-                    sma_list = [cps, sps, sm, hps, sma]
-                    smape_df = smape_df.append(pd.Series(sma_list, index = headers), ignore_index = True)
-                    print('smape_df')
-                    print(smape_df)
-
-    min_smape = smape_df[smape_df['smape'] == smape_df['smape'].min()].reset_index(drop = True)
-
-    return smape_df, min_smape
+optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
 
 
 # default model
