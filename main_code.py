@@ -75,13 +75,13 @@ def holidays_to_df():
 holiday = holidays_to_df()
 
 # 평가지표 (mse)
-def mse(true, pred):
+def mse(y_true, y_pred):
     return np.square(np.subtract(y_true,y_pred)).mean()
 
 # 최적값 추적
 def tuning(train, test, test_y, changepoint_prior_scale, seasonality_prior_scale, seasonality_mode, holidays_prior_scale, holidays_df):
-    headers = ['changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'smape']
-    smape_df = pd.DataFrame([], columns = headers)
+    headers = ['changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse']
+    mse_df = pd.DataFrame([], columns = headers)
 
     for cps in changepoint_prior_scale:
         for sps in seasonality_prior_scale:
@@ -102,16 +102,16 @@ def tuning(train, test, test_y, changepoint_prior_scale, seasonality_prior_scale
                     past = model.predict(test)
                     sma = mse(test_y, past['yhat'])
                     sma_list = [cps, sps, sm, hps, sma]
-                    smape_df = smape_df.append(pd.Series(sma_list, index = headers), ignore_index = True)
-                    print('smape_df')
-                    print(smape_df)
+                    mse_df = mse_df.append(pd.Series(sma_list, index = headers), ignore_index = True)
+                    print('mse_df')
+                    print(mse_df)
 
-    min_smape = smape_df[smape_df['smape'] == smape_df['smape'].min()].reset_index(drop = True)
+    min_mse = mse_df[mse_df['mse'] == mse_df['mse'].min()].reset_index(drop = True)
 
-    return smape_df, min_smape
+    return mse_df, min_mse
 
 
-
+''' main '''
 pd.set_option('mode.chained_assignment',  None) # 경고 무시 설정
 pd.set_option('display.max_columns', 50) # 데이터 프레임 열 출력 범위 설정
 
@@ -250,7 +250,7 @@ last_data = data_drop[['num', 'date_time', '전력사용량(kWh)', '기온(°C)'
 last_data = last_data.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8', 'km_cluster' : 'add9'})
 
 last_data = last_data.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
-
+# print(last_data)
 
 train = last_data.loc[:112319] # 20200601~20200817
 test = last_data.loc[112320:] # 20200818~20200824
@@ -260,6 +260,10 @@ test_df_list = list([])
 for i in range(0, 4):
     train_df_list.append(train[train['add9'] == i].reset_index(drop = True).iloc[:, 1:])
     test_df_list.append(test[test['add9'] == i].reset_index(drop = True).iloc[:, 1:])
+
+train_list = list([])
+for i in range(0,4):
+    train_list.append(last_data[last_data['add9'] == i].reset_index(drop = True).iloc[:, 1:])
 
 
 # # 함수화해보자..
@@ -290,41 +294,42 @@ for i in range(0, 4):
 # # 군집별로 데이터프레임을 분리하였다 !! ------------------------------------------------------------------------
 
 # tuning
-optimum_df = pd.DataFrame([], columns = ['num', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'smape'])
-for idx, val in enumerate(last_data):
+optimum_df = pd.DataFrame([], columns = ['cluster', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse'])
+for idx, val in enumerate(train_list):
     ttrain = val[val['ds'] < '2020-08-18']
     ttest = pd.DataFrame(val[val['ds'] >= '2020-08-18'].drop(['y'], axis = 1).reset_index(drop = True))
     ttest_y = val[val['ds'] >= '2020-08-18']['y'].reset_index(drop = True)
 
-    smape_df, min_smape = tuning(ttrain, ttest, ttest_y, [0.001, 0.01, 0.1, 0.5], [0.01, 0.1, 1, 10], ['additive', 'multiplicative'], [0.01, 0.1, 1, 10], holidays_df)
-    print('========================================== House {} result =========================================='.format(idx + 1))
-    print(min_smape)
+    mse_df, min_mse = tuning(ttrain, ttest, ttest_y, [0.001, 0.01, 0.1, 0.5], [0.01, 0.1, 1, 10], ['additive', 'multiplicative'], [0.01, 0.1, 1, 10], holiday)
+    print('========================================== cluster {} result =========================================='.format(idx + 1))
+    print(min_mse)
     print('=====================================================================================================')
-    smape_df.to_csv('/Users/baeksumin/apps/electricity/dataset/smape_df/house_{}_{}.csv'.format(idx + 1, today_), encoding = 'UTF-8', index = False)
+    mse_df.to_csv('/Users/baeksumin/apps/electricity/dataset/mse_df/cluster_{}_{}.csv'.format(idx + 1, today_), encoding = 'UTF-8', index = False)
     num = pd.DataFrame([idx + 1], columns = ['num'])
-    num_min_smape = pd.concat([num, min_smape], axis = 1)
-    optimum_df = pd.concat([optimum_df, num_min_smape], axis = 0).reset_index(drop = True)
+    print('/n', '---------------------------------', num, '---------------------------------', '/n')
+    num_min_mse = pd.concat([num, min_mse], axis = 1)
+    optimum_df = pd.concat([optimum_df, num_min_mse], axis = 0).reset_index(drop = True)
 
 optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
 
 
-# default model
+# # default model
 
-for i in range(4):
-    model = Prophet(
-        yearly_seasonality = False,
-        holidays = holiday,
-    ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)
-    model.fit(train_df_list[i])
+# for i in range(4):
+#     model = Prophet(
+#         yearly_seasonality = False,
+#         holidays = holiday,
+#     ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)
+#     model.fit(train_df_list[i])
 
-    forecast = model.predict(test_df_list[i])
-    model.plot(forecast)
-    plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}.png'.format(i + 1))
-    y_true = list(test_df_list[i]['y'])
-    y_pred = list(forecast['yhat'])
-    MSE = np.square(np.subtract(y_true,y_pred)).mean() 
+#     forecast = model.predict(test_df_list[i])
+#     model.plot(forecast)
+#     plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}.png'.format(i + 1))
+#     y_true = list(test_df_list[i]['y'])
+#     y_pred = list(forecast['yhat'])
+#     MSE = np.square(np.subtract(y_true,y_pred)).mean() 
     
-    print(MSE) # default 모델 사용했을때 5115003.44164709
+#     print(MSE) # default 모델 사용했을때 5115003.44164709
 
 
 
