@@ -178,7 +178,6 @@ data_drop = data_add.drop(['강수량(mm)'], axis = 1)
 #     plt.savefig("/Users/baeksumin/apps/electricity/image/num_visualization.png")
 # 건물별로 비슷한 전력사용량 패턴을 보이는 것이 있다는 것을 알 수 있다.
 
-# 표준화할것!!!
 # 군집화
 # 건물을 기준으로 하는 data frame 생성
 by_weekday = data_drop.groupby(['num','weekday'])['전력사용량(kWh)'].median().reset_index().pivot('num','weekday','전력사용량(kWh)').reset_index()
@@ -216,7 +215,6 @@ change_n_clusters([2,3,4,5,6,7,8,9,10,11], df.iloc[:,1:])
 
 # 그래프 확인 결과 최적 군집 수는 4로 결정
 
-
 kmeans = KMeans(n_clusters=4, random_state = 2)
 km_cluster = kmeans.fit_predict(df.iloc[:,1:])
 df_clust = df.copy()
@@ -245,6 +243,11 @@ data_drop = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'l
 
 train_ = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left')
 # print(train_)
+
+# 다시 군집화 
+
+data['weekday'] = data['date_time'].dt.weekday
+print(data)
 
 
 # prophet이 포맷으로 rename 
@@ -300,24 +303,24 @@ for i in range(0,4):
 
 # # 군집별로 데이터프레임을 분리하였다 !! ------------------------------------------------------------------------
 
-# tuning
-optimum_df = pd.DataFrame([], columns = ['cluster', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse'])
-for idx, val in enumerate(train_list):
-    ttrain = val[val['ds'] < '2020-08-18']
-    ttest = pd.DataFrame(val[val['ds'] >= '2020-08-18'].drop(['y'], axis = 1).reset_index(drop = True))
-    ttest_y = val[val['ds'] >= '2020-08-18']['y'].reset_index(drop = True)
+# # tuning
+# optimum_df = pd.DataFrame([], columns = ['cluster', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse'])
+# for idx, val in enumerate(train_list):
+#     ttrain = val[val['ds'] < '2020-08-18']
+#     ttest = pd.DataFrame(val[val['ds'] >= '2020-08-18'].drop(['y'], axis = 1).reset_index(drop = True))
+#     ttest_y = val[val['ds'] >= '2020-08-18']['y'].reset_index(drop = True)
 
-    mse_df, min_mse = tuning(ttrain, ttest, ttest_y, [0.001, 0.01, 0.1, 0.5], [0.01, 0.1, 1, 10], ['additive', 'multiplicative'], [0.01, 0.1, 1, 10], holiday)
-    print('========================================== cluster {} result =========================================='.format(idx + 1))
-    print(min_mse)
-    print('=====================================================================================================')
-    mse_df.to_csv('/Users/baeksumin/apps/electricity/dataset/mse_df/cluster_{}_{}.csv'.format(idx + 1, today_), encoding = 'UTF-8', index = False)
-    num = pd.DataFrame([idx + 1], columns = ['num'])
-    print('/n', '---------------------------------', num, '---------------------------------', '/n')
-    num_min_mse = pd.concat([num, min_mse], axis = 1)
-    optimum_df = pd.concat([optimum_df, num_min_mse], axis = 0).reset_index(drop = True)
+#     mse_df, min_mse = tuning(ttrain, ttest, ttest_y, [0.001, 0.01, 0.1, 0.5], [0.01, 0.1, 1, 10], ['additive', 'multiplicative'], [0.01, 0.1, 1, 10], holiday)
+#     print('========================================== cluster {} result =========================================='.format(idx + 1))
+#     print(min_mse)
+#     print('=====================================================================================================')
+#     mse_df.to_csv('/Users/baeksumin/apps/electricity/dataset/mse_df/cluster_{}_{}.csv'.format(idx + 1, today_), encoding = 'UTF-8', index = False)
+#     num = pd.DataFrame([idx + 1], columns = ['num'])
+#     print('/n', '---------------------------------', num, '---------------------------------', '/n')
+#     num_min_mse = pd.concat([num, min_mse], axis = 1)
+#     optimum_df = pd.concat([optimum_df, num_min_mse], axis = 0).reset_index(drop = True)
 
-optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
+# optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
 
 
 # # default model
