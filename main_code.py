@@ -94,9 +94,16 @@ def tuning(train, test, test_y, changepoint_prior_scale, seasonality_prior_scale
                         holidays_prior_scale = hps,
                         holidays = holidays_df
                     ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)\
+                        .add_seasonality(name='weekly_on_season', period=7, fourier_order=3, condition_name='on_season')\
+                        .add_seasonality(name='weekly_off_season', period=7, fourier_order=3, condition_name='off_season')\
                         .add_regressor('add1')\
                         .add_regressor('add2')\
-                        .add_regressor('add3')
+                        .add_regressor('add3')\
+                        .add_regressor('add4')\
+                        .add_regressor('add5')\
+                        .add_regressor('add6')\
+                        .add_regressor('add7')\
+                        .add_regressor('add8')
                     model.fit(train)
 
                     past = model.predict(test)
@@ -171,7 +178,7 @@ data_drop = data_add.drop(['강수량(mm)'], axis = 1)
 #     plt.savefig("/Users/baeksumin/apps/electricity/image/num_visualization.png")
 # 건물별로 비슷한 전력사용량 패턴을 보이는 것이 있다는 것을 알 수 있다.
 
-
+# 표준화할것!!!
 # 군집화
 # 건물을 기준으로 하는 data frame 생성
 by_weekday = data_drop.groupby(['num','weekday'])['전력사용량(kWh)'].median().reset_index().pivot('num','weekday','전력사용량(kWh)').reset_index()
@@ -190,7 +197,7 @@ for i in range(len(df)):
     df.iloc[i,8:] = (df.iloc[i,8:] - df.iloc[i,8:].mean())/df.iloc[i,8:].std()
 
 # k-means clustering
-# elbow method를 통해 군집의 개수 결정
+# elbow method를 통해 군집의 개수 결정 elbow가 달라질 수 있음
 def change_n_clusters(n_clusters, data):
     sum_of_squared_distance = []
     for n_cluster in n_clusters:
