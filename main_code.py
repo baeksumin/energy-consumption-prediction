@@ -136,7 +136,6 @@ today_ = re.sub('-', '', str(today))
 data['time'] = data.date_time.str.split(' ').str[-1]
 data['date'] = data.date_time.str.split(' ').str[0]
 data = data[['num', 'date_time', 'date', 'time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '강수량(mm)', '일조(hr)', '비전기냉방설비운영', '태양광보유' ]]
-# print(data)
 
 # 건물별로 데이터 정렬
 data_sort = data.sort_values(by=["num", "date"], ascending=[True, True], ignore_index=True)
@@ -155,14 +154,12 @@ data_sort = data.sort_values(by=["num", "date"], ascending=[True, True], ignore_
 data['불쾌지수'] = (0.81 * data.loc[:, '기온(°C)'] + 0.01 * data['습도(%)'] * (0.99 * data['기온(°C)'] - 14.3) + 46.3).round(1)
 data['체감온도'] = (13.12 + 0.6215 * data['기온(°C)'] - 11.37 * data['풍속(m/s)'].apply(lambda x: math.pow(x,0.15)) + 0.3965 * data['풍속(m/s)'].apply(lambda x: math.pow(x, 0.15)) * data['기온(°C)']).round(1)
 data['date_time'] = pd.to_datetime(data['date_time'])
-data['weekday'] = data['date_time'].dt.weekday
+data['weekday'] = data['date_time'].dt.weekday # 월:0, 화:1, 수:2, 목:3, 금:4, 토:5, 일:6
 data_add = data[['num', 'date_time', 'date', 'weekday', 'time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '강수량(mm)', '일조(hr)', '불쾌지수', '체감온도', '비전기냉방설비운영', '태양광보유']]
-# print(data_add)
 
 # 필요하지 않은 컬럼 제거
 # 상관분석 결과, 전력사용량과 가장 상관도가 적은 '강수량' 컬럼 삭제
 data_drop = data_add.drop(['강수량(mm)'], axis = 1)
-# print(data_drop)
 
 # 시각화 - 건물별 전력사용량 패턴 알기
 # fig = plt.figure(figsize = (15, 40))
@@ -220,7 +217,6 @@ km_cluster = kmeans.fit_predict(df.iloc[:,1:])
 df_clust = df.copy()
 df_clust['km_cluster'] = km_cluster
 df_clust['km_cluster'] = df_clust['km_cluster'].map({0:1, 1:3, 2:2, 3:0})
-# print(df_clust)
 
 data_drop = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left')
 
@@ -242,12 +238,31 @@ data_drop = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'l
 
 
 train_ = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left')
-# print(train_)
 
 # 다시 군집화 
 
-data['weekday'] = data['date_time'].dt.weekday
-print(data)
+data_add['time'] = data_add['time'].astype(int)
+data_add['weekday'] = data_add['weekday'].astype(int)
+
+df_list = list([])
+
+for i in range(1, 61):
+    df_list.append(data_add[data_add['num'] == i].reset_index(drop = True).iloc[:, 1:])
+
+# for i in range(len(df_list)):
+for i in range(3):
+    print(i, '번째 건물')
+
+    for j in range(len(df_list[i])):
+
+        if (df_list[i]['weekday'][j] <= 4) & (9 <= df_list[i]['time'][j] <= 18): #평일 낮
+            print(df_list[i]['date_time'][j], '평일 낮')
+        elif (df_list[i]['weekday'][j] <= 4) & ~(9 <= df_list[i]['time'][j] <= 18): #평일 밤
+            print(df_list[i]['date_time'][j], '평일 밤')
+        elif (df_list[i]['weekday'][j] >= 5) & (9 <= df_list[i]['time'][j] <= 18): #주말 낮
+            print(df_list[i]['date_time'][j], '주말 낮')
+        elif (df_list[i]['weekday'][j] >= 5) & ~(9 <= df_list[i]['time'][j] <= 18): #주말 밤
+            print(df_list[i]['date_time'][j], '주말 밤')
 
 
 # prophet이 포맷으로 rename 
