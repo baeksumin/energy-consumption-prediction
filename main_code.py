@@ -249,21 +249,43 @@ df_list = list([])
 for i in range(1, 61):
     df_list.append(data_add[data_add['num'] == i].reset_index(drop = True).iloc[:, 1:])
 
+
+avg_list = []
 # for i in range(len(df_list)):
 for i in range(3):
     print(i, '번째 건물')
+    wd_d = [] # weekday_day
+    wd_n = [] # weekday_night
+    we_d = [] # weekend_day
+    we_n = [] # weekend_night
 
     for j in range(len(df_list[i])):
 
         if (df_list[i]['weekday'][j] <= 4) & (9 <= df_list[i]['time'][j] <= 18): #평일 낮
-            print(df_list[i]['date_time'][j], '평일 낮')
+            # print(df_list[i]['date_time'][j], '평일 낮')
+            wd_d.append(df_list[i]['전력사용량(kWh)'][j])
         elif (df_list[i]['weekday'][j] <= 4) & ~(9 <= df_list[i]['time'][j] <= 18): #평일 밤
-            print(df_list[i]['date_time'][j], '평일 밤')
+            # print(df_list[i]['date_time'][j], '평일 밤')
+            wd_n.append(df_list[i]['전력사용량(kWh)'][j])
         elif (df_list[i]['weekday'][j] >= 5) & (9 <= df_list[i]['time'][j] <= 18): #주말 낮
-            print(df_list[i]['date_time'][j], '주말 낮')
+            # print(df_list[i]['date_time'][j], '주말 낮')
+            we_d.append(df_list[i]['전력사용량(kWh)'][j])
         elif (df_list[i]['weekday'][j] >= 5) & ~(9 <= df_list[i]['time'][j] <= 18): #주말 밤
-            print(df_list[i]['date_time'][j], '주말 밤')
+            # print(df_list[i]['date_time'][j], '주말 밤')
+            we_n.append(df_list[i]['전력사용량(kWh)'][j])
 
+    wd_d_avg = sum(wd_d) / len(wd_d)
+    wd_n_avg = sum(wd_n) / len(wd_n)
+    we_d_avg = sum(we_d) / len(we_d)
+    we_n_avg = sum(we_n) / len(we_n)
+    avg_list = [wd_d_avg, wd_n_avg, we_d_avg, we_n_avg]
+    print(avg_list.index(max(avg_list)))
+
+    df_list[i]['cluster'] = avg_list.index(max(avg_list))
+    # print(df_list[i]['cluster'])
+print(df_list)
+
+    
 
 # prophet이 포맷으로 rename 
 # train_['datetime'] = pd.to_datetime(train_['date'].str.cat(train_['time'], sep='-'))
