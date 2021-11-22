@@ -247,7 +247,7 @@ data_add['weekday'] = data_add['weekday'].astype(int)
 df_list = list([])
 
 for i in range(1, 61):
-    df_list.append(data_add[data_add['num'] == i].reset_index(drop = True).iloc[:, 1:])
+    df_list.append(data_add[data_add['num'] == i].reset_index(drop = True).iloc[:, :])
 
 avg_list = []
 for i in range(len(df_list)):
@@ -298,7 +298,7 @@ for c in range(4):
     plt.xlabel('')
     plt.ylabel('')
     plt.yticks([])
-plt.savefig("/Users/baeksumin/apps/electricity/image/test2.png")
+# plt.savefig("/Users/baeksumin/apps/electricity/image/test2.png")
     
 
 # prophet이 포맷으로 rename 
@@ -308,7 +308,7 @@ plt.savefig("/Users/baeksumin/apps/electricity/image/test2.png")
 # print(data)
 
 df_cluster = df_cluster[['num', 'date_time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '일조(hr)', '불쾌지수', '체감온도','비전기냉방설비운영', '태양광보유', 'cluster']]
-df_cluster = df_cluster.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8', 'km_cluster' : 'add9'})
+df_cluster = df_cluster.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8', 'cluster' : 'add9'})
 
 df_cluster = df_cluster.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
 # print(last_data)
@@ -374,23 +374,26 @@ for i in range(0,4):
 # optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
 
 
-# # default model
+# default model
 
-# for i in range(4):
-#     model = Prophet(
-#         yearly_seasonality = False,
-#         holidays = holiday,
-#     ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)
-#     model.fit(train_df_list[i])
+for i in range(4):
+    model = Prophet(
+        yearly_seasonality = False,
+        holidays = holiday,
+    ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)
+    model.fit(train_df_list[i])
 
-#     forecast = model.predict(test_df_list[i])
-#     model.plot(forecast)
-#     plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}.png'.format(i + 1))
-#     y_true = list(test_df_list[i]['y'])
-#     y_pred = list(forecast['yhat'])
-#     MSE = np.square(np.subtract(y_true,y_pred)).mean() 
+    forecast = model.predict(test_df_list[i])
+    model.plot(forecast)
+    plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}.png'.format(i + 1))
+    y_true = list(test_df_list[i]['y'])
+    y_pred = list(forecast['yhat'])
+    MSE = np.square(np.subtract(y_true,y_pred)).mean() 
     
-#     print(MSE) # default 모델 사용했을때 5115003.44164709
+    print(MSE) 
+    # default 모델 사용했을때 5115003.44164709
+    # 두번째 군집화 후 default 모델 사용했을때, 5979302, 8402, 2477111, 847640 
+
 
 
 
