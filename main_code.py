@@ -236,8 +236,8 @@ data_drop = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'l
 #     plt.yticks([])
 # plt.savefig("/Users/baeksumin/apps/electricity/image/test1.png")
 
-
 train_ = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left')
+
 
 # 다시 군집화 
 
@@ -249,11 +249,9 @@ df_list = list([])
 for i in range(1, 61):
     df_list.append(data_add[data_add['num'] == i].reset_index(drop = True).iloc[:, 1:])
 
-
 avg_list = []
-# for i in range(len(df_list)):
-for i in range(3):
-    print(i, '번째 건물')
+for i in range(len(df_list)):
+# for i in range(3):
     wd_d = [] # weekday_day
     wd_n = [] # weekday_night
     we_d = [] # weekend_day
@@ -279,12 +277,28 @@ for i in range(3):
     we_d_avg = sum(we_d) / len(we_d)
     we_n_avg = sum(we_n) / len(we_n)
     avg_list = [wd_d_avg, wd_n_avg, we_d_avg, we_n_avg]
-    print(avg_list.index(max(avg_list)))
+    # print(avg_list.index(max(avg_list)))
 
     df_list[i]['cluster'] = avg_list.index(max(avg_list))
     # print(df_list[i]['cluster'])
-print(df_list)
+ 
+print(df_list[0])
 
+df_cluster = pd.DataFrame()
+for i in range(len(df_list)):
+    df_cluster = pd.concat([df_cluster, df_list[i]])
+
+fig = plt.figure(figsize = (20, 4))
+for c in range(4):
+    temp = df_cluster[df_cluster.cluster == c]
+    temp = temp.groupby(['weekday', 'time'])['전력사용량(kWh)'].median().reset_index().pivot('time', 'weekday', '전력사용량(kWh)')
+    plt.subplot(1, 5, c+1)
+    sns.heatmap(temp)
+    plt.title(f'cluster {c}')
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.yticks([])
+plt.savefig("/Users/baeksumin/apps/electricity/image/test2.png")
     
 
 # prophet이 포맷으로 rename 
@@ -293,14 +307,14 @@ print(df_list)
 # data = data[['num', 'date_time', 'date', 'time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '강수량(mm)', '일조(hr)', '비전기냉방설비운영', '태양광보유' ]]
 # print(data)
 
-last_data = data_drop[['num', 'date_time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '일조(hr)', '불쾌지수', '체감온도','비전기냉방설비운영', '태양광보유', 'km_cluster']]
-last_data = last_data.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8', 'km_cluster' : 'add9'})
+df_cluster = df_cluster[['num', 'date_time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '일조(hr)', '불쾌지수', '체감온도','비전기냉방설비운영', '태양광보유', 'cluster']]
+df_cluster = df_cluster.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8', 'km_cluster' : 'add9'})
 
-last_data = last_data.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
+df_cluster = df_cluster.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
 # print(last_data)
 
-train = last_data.loc[:112319] # 20200601~20200817
-test = last_data.loc[112320:] # 20200818~20200824
+train = df_cluster.loc[:112319] # 20200601~20200817
+test = df_cluster.loc[112320:] # 20200818~20200824
 
 train_df_list = list([])
 test_df_list = list([])
@@ -310,7 +324,7 @@ for i in range(0, 4):
 
 train_list = list([])
 for i in range(0,4):
-    train_list.append(last_data[last_data['add9'] == i].reset_index(drop = True).iloc[:, 1:])
+    train_list.append(df_cluster[df_cluster['add9'] == i].reset_index(drop = True).iloc[:, 1:])
 
 
 # # 함수화해보자..
@@ -340,7 +354,7 @@ for i in range(0,4):
 
 # # 군집별로 데이터프레임을 분리하였다 !! ------------------------------------------------------------------------
 
-# # tuning
+# tuning
 # optimum_df = pd.DataFrame([], columns = ['cluster', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse'])
 # for idx, val in enumerate(train_list):
 #     ttrain = val[val['ds'] < '2020-08-18']
