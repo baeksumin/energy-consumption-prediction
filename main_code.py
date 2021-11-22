@@ -94,8 +94,6 @@ def tuning(train, test, test_y, changepoint_prior_scale, seasonality_prior_scale
                         holidays_prior_scale = hps,
                         holidays = holidays_df
                     ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)\
-                        .add_seasonality(name='weekly_on_season', period=7, fourier_order=3, condition_name='on_season')\
-                        .add_seasonality(name='weekly_off_season', period=7, fourier_order=3, condition_name='off_season')\
                         .add_regressor('add1')\
                         .add_regressor('add2')\
                         .add_regressor('add3')\
@@ -327,72 +325,45 @@ for i in range(0,4):
     train_list.append(df_cluster[df_cluster['add9'] == i].reset_index(drop = True).iloc[:, 1:])
 
 
-# # 함수화해보자..
-# df0 = last_data[last_data.add9 == 0]
-# df0_sort = df0.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
-# df0_drop = df0_sort.drop(['num'], axis = 1)
-# df0_train = df0_drop.loc[:69263] # 20200601~20200817
-# df0_test = df0_drop.loc[69264:] # 20200818~20200824
-
-# df1 = last_data[last_data.add9 == 1]
-# df1_sort = df1.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
-# df1_drop = df1_sort.drop(['num'], axis = 1)
-# df1_train = df1_drop.loc[:24335] # 20200601~20200817
-# df1_test = df1_drop.loc[24336:] # 20200818~20200824
-
-# df2 = last_data[last_data.add9 == 2]
-# df2_sort = df2.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
-# df2_drop = df2_sort.drop(['num'], axis = 1)
-# df2_train = df2_drop.loc[:11231] # 20200601~20200817
-# df2_test = df2_drop.loc[11232:] # 20200818~20200824
-
-# df3 = last_data[last_data.add9 == 3]
-# df3_sort = df3.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
-# df3_drop = df3_sort.drop(['num'], axis = 1)
-# df3_train = df3_drop.loc[:7487] # 20200601~20200817
-# df3_test = df3_drop.loc[7488:] # 20200818~20200824
-
-# # 군집별로 데이터프레임을 분리하였다 !! ------------------------------------------------------------------------
-
 # tuning
-# optimum_df = pd.DataFrame([], columns = ['cluster', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse'])
-# for idx, val in enumerate(train_list):
-#     ttrain = val[val['ds'] < '2020-08-18']
-#     ttest = pd.DataFrame(val[val['ds'] >= '2020-08-18'].drop(['y'], axis = 1).reset_index(drop = True))
-#     ttest_y = val[val['ds'] >= '2020-08-18']['y'].reset_index(drop = True)
+optimum_df = pd.DataFrame([], columns = ['cluster', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse'])
+for idx, val in enumerate(train_list):
+    ttrain = val[val['ds'] < '2020-08-18']
+    ttest = pd.DataFrame(val[val['ds'] >= '2020-08-18'].drop(['y'], axis = 1).reset_index(drop = True))
+    ttest_y = val[val['ds'] >= '2020-08-18']['y'].reset_index(drop = True)
 
-#     mse_df, min_mse = tuning(ttrain, ttest, ttest_y, [0.001, 0.01, 0.1, 0.5], [0.01, 0.1, 1, 10], ['additive', 'multiplicative'], [0.01, 0.1, 1, 10], holiday)
-#     print('========================================== cluster {} result =========================================='.format(idx + 1))
-#     print(min_mse)
-#     print('=====================================================================================================')
-#     mse_df.to_csv('/Users/baeksumin/apps/electricity/dataset/mse_df/cluster_{}_{}.csv'.format(idx + 1, today_), encoding = 'UTF-8', index = False)
-#     num = pd.DataFrame([idx + 1], columns = ['num'])
-#     print('/n', '---------------------------------', num, '---------------------------------', '/n')
-#     num_min_mse = pd.concat([num, min_mse], axis = 1)
-#     optimum_df = pd.concat([optimum_df, num_min_mse], axis = 0).reset_index(drop = True)
+    mse_df, min_mse = tuning(ttrain, ttest, ttest_y, [0.001, 0.01, 0.1, 0.5], [0.01, 0.1, 1, 10], ['additive', 'multiplicative'], [0.01, 0.1, 1, 10], holiday)
+    print('========================================== cluster {} result =========================================='.format(idx + 1))
+    print(min_mse)
+    print('=====================================================================================================')
+    mse_df.to_csv('/Users/baeksumin/apps/electricity/dataset/mse_df/cluster_{}_{}.csv'.format(idx + 1, today_), encoding = 'UTF-8', index = False)
+    num = pd.DataFrame([idx + 1], columns = ['num'])
+    print('/n', '---------------------------------', num, '---------------------------------', '/n')
+    num_min_mse = pd.concat([num, min_mse], axis = 1)
+    optimum_df = pd.concat([optimum_df, num_min_mse], axis = 0).reset_index(drop = True)
 
-# optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
+optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
 
 
 # default model
 
-for i in range(4):
-    model = Prophet(
-        yearly_seasonality = False,
-        holidays = holiday,
-    ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)
-    model.fit(train_df_list[i])
+# for i in range(4):
+#     model = Prophet(
+#         yearly_seasonality = False,
+#         holidays = holiday,
+#     ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)
+#     model.fit(train_df_list[i])
 
-    forecast = model.predict(test_df_list[i])
-    model.plot(forecast)
-    plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}.png'.format(i + 1))
-    y_true = list(test_df_list[i]['y'])
-    y_pred = list(forecast['yhat'])
-    MSE = np.square(np.subtract(y_true,y_pred)).mean() 
+#     forecast = model.predict(test_df_list[i])
+#     model.plot(forecast)
+#     plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}.png'.format(i + 1))
+#     y_true = list(test_df_list[i]['y'])
+#     y_pred = list(forecast['yhat'])
+#     MSE = np.square(np.subtract(y_true,y_pred)).mean() 
     
-    print(MSE) 
-    # default 모델 사용했을때 5115003.44164709
-    # 두번째 군집화 후 default 모델 사용했을때, 5979302, 8402, 2477111, 847640 
+#     print(MSE) 
+#     # default 모델 사용했을때 5115003.44164709
+#     # 두번째 군집화 후 default 모델 사용했을때, 5979302, 8402, 2477111, 847640 
 
 
 

@@ -1,0 +1,5 @@
+cluster,changepoint_prior_scale,seasonality_prior_scale,seasonality_mode,holidays_prior_scale,mse,num
+,0.01,10.0,multiplicative,1.0,5963959.777513965,1.0
+,0.1,0.01,additive,10.0,8180.500145935721,2.0
+,0.01,0.1,multiplicative,0.01,2362946.5070511517,3.0
+,0.01,0.01,additive,0.01,626953.2493715315,4.0
