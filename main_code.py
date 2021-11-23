@@ -11,6 +11,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import classification_report
 from sklearn.metrics import accuracy_score
 import requests
+from tqdm import tqdm
 from bs4 import BeautifulSoup
 from prophet import Prophet
 
@@ -92,7 +93,7 @@ def tuning(train, test, test_y, changepoint_prior_scale, seasonality_prior_scale
                         seasonality_prior_scale = sps,
                         seasonality_mode = sm,
                         holidays_prior_scale = hps,
-                        holidays = holidays_df
+                        holidays = holiday
                     ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)\
                         .add_regressor('add1')\
                         .add_regressor('add2')\
@@ -324,27 +325,6 @@ train_list = list([])
 for i in range(0,4):
     train_list.append(df_cluster[df_cluster['add9'] == i].reset_index(drop = True).iloc[:, 1:])
 
-
-# tuning
-optimum_df = pd.DataFrame([], columns = ['cluster', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse'])
-for idx, val in enumerate(train_list):
-    ttrain = val[val['ds'] < '2020-08-18']
-    ttest = pd.DataFrame(val[val['ds'] >= '2020-08-18'].drop(['y'], axis = 1).reset_index(drop = True))
-    ttest_y = val[val['ds'] >= '2020-08-18']['y'].reset_index(drop = True)
-
-    mse_df, min_mse = tuning(ttrain, ttest, ttest_y, [0.001, 0.01, 0.1, 0.5], [0.01, 0.1, 1, 10], ['additive', 'multiplicative'], [0.01, 0.1, 1, 10], holiday)
-    print('========================================== cluster {} result =========================================='.format(idx + 1))
-    print(min_mse)
-    print('=====================================================================================================')
-    mse_df.to_csv('/Users/baeksumin/apps/electricity/dataset/mse_df/cluster_{}_{}.csv'.format(idx + 1, today_), encoding = 'UTF-8', index = False)
-    num = pd.DataFrame([idx + 1], columns = ['num'])
-    print('/n', '---------------------------------', num, '---------------------------------', '/n')
-    num_min_mse = pd.concat([num, min_mse], axis = 1)
-    optimum_df = pd.concat([optimum_df, num_min_mse], axis = 0).reset_index(drop = True)
-
-optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
-
-
 # default model
 
 # for i in range(4):
@@ -364,6 +344,59 @@ optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.
 #     print(MSE) 
 #     # default 모델 사용했을때 5115003.44164709
 #     # 두번째 군집화 후 default 모델 사용했을때, 5979302, 8402, 2477111, 847640 
+
+# # tuning
+# optimum_df = pd.DataFrame([], columns = ['cluster', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse'])
+# for idx, val in enumerate(train_list):
+#     ttrain = val[val['ds'] < '2020-08-18']
+#     ttest = pd.DataFrame(val[val['ds'] >= '2020-08-18'].drop(['y'], axis = 1).reset_index(drop = True))
+#     ttest_y = val[val['ds'] >= '2020-08-18']['y'].reset_index(drop = True)
+
+#     mse_df, min_mse = tuning(ttrain, ttest, ttest_y, [0.001, 0.01, 0.1, 0.5], [0.01, 0.1, 1, 10], ['additive', 'multiplicative'], [0.01, 0.1, 1, 10], holiday)
+#     print('========================================== cluster {} result =========================================='.format(idx + 1))
+#     print(min_mse)
+#     print('=====================================================================================================')
+#     mse_df.to_csv('/Users/baeksumin/apps/electricity/dataset/mse_df/cluster_{}_{}.csv'.format(idx + 1, today_), encoding = 'UTF-8', index = False)
+#     num = pd.DataFrame([idx + 1], columns = ['num'])
+#     print('/n', '---------------------------------', num, '---------------------------------', '/n')
+#     num_min_mse = pd.concat([num, min_mse], axis = 1)
+#     optimum_df = pd.concat([optimum_df, num_min_mse], axis = 0).reset_index(drop = True)
+
+# optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
+
+# read optimum
+optimum_df = pd.read_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/20211123.csv', encoding = 'UTF-8')
+
+# 모델 학습
+answer_list = list([])
+for i in tqdm(range(len(optimum_df))):
+    cps = optimum_df.loc[i, 'changepoint_prior_scale']
+    sps = optimum_df.loc[i, 'seasonality_prior_scale']
+    sm = optimum_df.loc[i, 'seasonality_mode']
+    hps = optimum_df.loc[i, 'holidays_prior_scale']
+    model = Prophet(
+        changepoint_prior_scale = cps,
+        seasonality_prior_scale = sps,
+        seasonality_mode = sm,
+        holidays_prior_scale = hps,
+        holidays = holiday
+    ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)\
+        .add_regressor('add1')\
+        .add_regressor('add2')\
+        .add_regressor('add3')\
+        .add_regressor('add4')\
+        .add_regressor('add5')\
+        .add_regressor('add6')\
+        .add_regressor('add7')\
+        .add_regressor('add8')
+    model.fit(train_df_list[i])
+
+    # 예측
+    forecast = model.predict(test_df_list[i])
+    answer_list = answer_list + list(forecast['yhat'])
+    model.plot(forecast)
+    plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}_{}.png'.format(i + 1, today_))
+
 
 
 
