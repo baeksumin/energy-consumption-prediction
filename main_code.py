@@ -281,7 +281,6 @@ for i in range(len(df_list)):
     df_list[i]['cluster'] = avg_list.index(max(avg_list))
     # print(df_list[i]['cluster'])
  
-print(df_list[0])
 
 df_cluster = pd.DataFrame()
 for i in range(len(df_list)):
@@ -364,6 +363,9 @@ for i in range(0,4):
 
 # optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
 
+# qr = train_list[1][train_list[1]['ds'] >= '2020-08-18'][['ds','y']].reset_index(drop = True)
+# print(qr)
+
 # read optimum
 optimum_df = pd.read_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/20211123.csv', encoding = 'UTF-8')
 
@@ -391,11 +393,16 @@ for i in tqdm(range(len(optimum_df))):
         .add_regressor('add8')
     model.fit(train_df_list[i])
 
+    
     # 예측
+    true_y = train_list[i][train_list[i]['ds'] >= '2020-08-18'][['ds','y']].reset_index(drop = True)
     forecast = model.predict(test_df_list[i])
     answer_list = answer_list + list(forecast['yhat'])
+    
     model.plot(forecast)
-    plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}_{}.png'.format(i + 1, today_))
+    plt.plot(true_y['ds'], true_y['y'], 'r')
+
+    plt.savefig('/Users/baeksumin/apps/electricity/image/test_energy_future_{}_{}.png'.format(i + 1, today_))
 
 
 
