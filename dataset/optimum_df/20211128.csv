@@ -1,0 +1,10 @@
+cluster,changepoint_prior_scale,seasonality_prior_scale,seasonality_mode,holidays_prior_scale,mse,num
+,0.001,0.01,multiplicative,0.01,378335.9196594153,1.0
+,0.1,0.1,multiplicative,1.0,513471.28493124706,2.0
+,0.01,0.1,multiplicative,0.01,5538036.648261978,3.0
+,0.1,0.01,additive,10.0,8180.500145935721,4.0
+,0.001,0.01,multiplicative,0.01,336719.52618168056,5.0
+,0.001,1.0,multiplicative,0.01,938747.4577834952,6.0
+,0.1,0.01,additive,0.01,396538.4438614481,7.0
+,0.001,0.01,additive,0.01,1673.7682327711934,8.0
+,0.01,0.01,multiplicative,0.1,78946.10594181095,9.0

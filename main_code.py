@@ -295,37 +295,32 @@ for c in range(9):
     plt.xlabel('')
     plt.ylabel('')
     plt.yticks([])
-plt.savefig("/Users/baeksumin/apps/electricity/image/test3.png")
+# plt.savefig("/Users/baeksumin/apps/electricity/image/test3.png")
 
 
 # prophet이 포맷으로 rename 
-# train_['datetime'] = pd.to_datetime(train_['date'].str.cat(train_['time'], sep='-'))
-# print(train_)
-# data = data[['num', 'date_time', 'date', 'time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '강수량(mm)', '일조(hr)', '비전기냉방설비운영', '태양광보유' ]]
-# print(data)
+df_recluster = df_recluster[['num', 'date_time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '일조(hr)', '불쾌지수', '체감온도','비전기냉방설비운영', '태양광보유', 'cluster']]
+df_recluster = df_recluster.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8', 'cluster' : 'add9'})
 
-df_cluster = df_cluster[['num', 'date_time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '일조(hr)', '불쾌지수', '체감온도','비전기냉방설비운영', '태양광보유', 'cluster']]
-df_cluster = df_cluster.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8', 'cluster' : 'add9'})
-
-df_cluster = df_cluster.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
+df_recluster = df_recluster.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
 # print(last_data)
 
-train = df_cluster.loc[:112319] # 20200601~20200817
-test = df_cluster.loc[112320:] # 20200818~20200824
+train = df_recluster.loc[:112319] # 20200601~20200817
+test = df_recluster.loc[112320:] # 20200818~20200824
 
 train_df_list = list([])
 test_df_list = list([])
-for i in range(0, 4):
+for i in range(0, 9):
     train_df_list.append(train[train['add9'] == i].reset_index(drop = True).iloc[:, 1:])
     test_df_list.append(test[test['add9'] == i].reset_index(drop = True).iloc[:, 1:])
 
 train_list = list([])
-for i in range(0,4):
-    train_list.append(df_cluster[df_cluster['add9'] == i].reset_index(drop = True).iloc[:, 1:])
+for i in range(0, 9):
+    train_list.append(df_recluster[df_recluster['add9'] == i].reset_index(drop = True).iloc[:, 1:])
 
 # # default model
 
-# for i in range(4):
+# for i in range(0,9):
 #     model = Prophet(
 #         yearly_seasonality = False,
 #         holidays = holiday,
@@ -334,16 +329,15 @@ for i in range(0,4):
 
 #     forecast = model.predict(test_df_list[i])
 #     model.plot(forecast)
-#     plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}.png'.format(i + 1))
+#     plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}_20211128.png'.format(i + 1))
 #     y_true = list(test_df_list[i]['y'])
 #     y_pred = list(forecast['yhat'])
 #     MSE = np.square(np.subtract(y_true,y_pred)).mean() 
-    
+
 #     print(MSE) 
-    
-    
-    # default 모델 사용했을때 5115003.44164709
-    # 두번째 군집화 후 default 모델 사용했을때, 5979302, 8402, 2477111, 847640 
+
+    # 군집화 후 default 모델 사용했을때, 5979302, 8402, 2477111, 847640 
+    # 군집 내 군집화 후 default 모델 사용했을때, 359930, 517726, 5830013, 8402, 352623, 953409, 680317, 4685, 228111
 
 # # tuning
 # optimum_df = pd.DataFrame([], columns = ['cluster', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse'])
@@ -365,43 +359,43 @@ for i in range(0,4):
 # optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
 
 
-# # read optimum
-# optimum_df = pd.read_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/20211123.csv', encoding = 'UTF-8')
+# read optimum
+optimum_df = pd.read_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/20211128.csv', encoding = 'UTF-8')
 
-# # 모델 학습
-# answer_list = list([])
-# for i in tqdm(range(len(optimum_df))):
-#     cps = optimum_df.loc[i, 'changepoint_prior_scale']
-#     sps = optimum_df.loc[i, 'seasonality_prior_scale']
-#     sm = optimum_df.loc[i, 'seasonality_mode']
-#     hps = optimum_df.loc[i, 'holidays_prior_scale']
-#     model = Prophet(
-#         changepoint_prior_scale = cps,
-#         seasonality_prior_scale = sps,
-#         seasonality_mode = sm,
-#         holidays_prior_scale = hps,
-#         holidays = holiday
-#     ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)\
-#         .add_regressor('add1')\
-#         .add_regressor('add2')\
-#         .add_regressor('add3')\
-#         .add_regressor('add4')\
-#         .add_regressor('add5')\
-#         .add_regressor('add6')\
-#         .add_regressor('add7')\
-#         .add_regressor('add8')
-#     model.fit(train_df_list[i])
+# 모델 학습
+answer_list = list([])
+for i in tqdm(range(len(optimum_df))):
+    cps = optimum_df.loc[i, 'changepoint_prior_scale']
+    sps = optimum_df.loc[i, 'seasonality_prior_scale']
+    sm = optimum_df.loc[i, 'seasonality_mode']
+    hps = optimum_df.loc[i, 'holidays_prior_scale']
+    model = Prophet(
+        changepoint_prior_scale = cps,
+        seasonality_prior_scale = sps,
+        seasonality_mode = sm,
+        holidays_prior_scale = hps,
+        holidays = holiday
+    ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)\
+        .add_regressor('add1')\
+        .add_regressor('add2')\
+        .add_regressor('add3')\
+        .add_regressor('add4')\
+        .add_regressor('add5')\
+        .add_regressor('add6')\
+        .add_regressor('add7')\
+        .add_regressor('add8')
+    model.fit(train_df_list[i])
 
     
-#     # 예측
-#     true_y = train_list[i][train_list[i]['ds'] >= '2020-08-18'][['ds','y']].reset_index(drop = True)
-#     forecast = model.predict(test_df_list[i])
-#     answer_list = answer_list + list(forecast['yhat'])
+    # 예측
+    true_y = train_list[i][train_list[i]['ds'] >= '2020-08-18'][['ds','y']].reset_index(drop = True)
+    forecast = model.predict(test_df_list[i])
+    answer_list = answer_list + list(forecast['yhat'])
     
-#     model.plot(forecast)
-#     plt.plot(true_y['ds'], true_y['y'], 'r')
+    model.plot(forecast)
+    # plt.plot(true_y['ds'], true_y['y'], 'r', linestyle='dashed')
 
-#     plt.savefig('/Users/baeksumin/apps/electricity/image/test_energy_future_{}_{}.png'.format(i + 1, today_))
+    plt.savefig('/Users/baeksumin/apps/electricity/image/forecast_energy_future_{}_{}.png'.format(i + 1, today_))
 
 
 
