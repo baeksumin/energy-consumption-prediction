@@ -17,7 +17,9 @@ from prophet import Prophet
 
 
 ''' functions '''
+
 # 휴일 데이터 가져오기 (공공데이터포털 API사용)
+
 def print_whichday(year, month, day) :
     r = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
     aday = dt.date(year, month, day)
@@ -160,91 +162,27 @@ data_add = data[['num', 'date_time', 'date', 'weekday', 'time', '전력사용량
 # 상관분석 결과, 전력사용량과 가장 상관도가 적은 '강수량' 컬럼 삭제
 data_drop = data_add.drop(['강수량(mm)'], axis = 1)
 
-# 시각화 - 건물별 전력사용량 패턴 알기
+# # 시각화 - 건물별 전력사용량 패턴 알기
 # fig = plt.figure(figsize = (15, 40))
-# for num in train_drop['num'].unique():
-#     df = train_drop[train_drop.num == num]
-#     df = df.groupby(['weekday', 'time'])['전력사용량(kWh)'].mean().reset_index().pivot('weekday', 'time', '전력사용량(kWh)')
+# for num in data_drop['num'].unique():
+#     df = data_drop[data_drop.num == num]
+#     df = df.groupby(['weekday', 'time'])['전력사용량(kWh)'].mean().reset_index().pivot('time', 'weekday', '전력사용량(kWh)')
 #     plt.subplot(12, 5, num)
 #     sns.heatmap(df)
 #     plt.title(f'building {num}')
 #     plt.xlabel('')
 #     plt.ylabel('')
 #     plt.yticks([])
-#     plt.savefig("/Users/baeksumin/apps/electricity/image/num_visualization.png")
-# 건물별로 비슷한 전력사용량 패턴을 보이는 것이 있다는 것을 알 수 있다.
-
-# 군집화
-# 건물을 기준으로 하는 data frame 생성
-by_weekday = data_drop.groupby(['num','weekday'])['전력사용량(kWh)'].median().reset_index().pivot('num','weekday','전력사용량(kWh)').reset_index()
-by_time = data_drop.groupby(['num','time'])['전력사용량(kWh)'].median().reset_index().pivot('num','time','전력사용량(kWh)').reset_index().drop('num', axis = 1)
-df = pd.concat([by_weekday, by_time], axis= 1)
-columns = ['num'] + ['day'+str(i) for i in range(7)] + ['time'+str(i) for i in range(24)]
-df.columns = columns
-# print(df)
-
-# '전력사용량'이 아닌 '요일과 시간대에 따른 전력 사용량의 경향성'에 따라서만 군집화 할 것이므로, 특수한 scaling이 필요함
-# standard scaling
-for i in range(len(df)):
-    # 요일 별 전력 중앙값에 대해 scaling
-    df.iloc[i,1:8] = (df.iloc[i,1:8] - df.iloc[i,1:8].mean())/df.iloc[i,1:8].std()
-    # 시간대별 전력 중앙값에 대해 scaling
-    df.iloc[i,8:] = (df.iloc[i,8:] - df.iloc[i,8:].mean())/df.iloc[i,8:].std()
-
-# k-means clustering
-# elbow method를 통해 군집의 개수 결정 elbow가 달라질 수 있음
-def change_n_clusters(n_clusters, data):
-    sum_of_squared_distance = []
-    for n_cluster in n_clusters:
-        kmeans = KMeans(n_clusters=n_cluster)
-        kmeans.fit(data)
-        sum_of_squared_distance.append(kmeans.inertia_)
-        
-    plt.figure(1 , figsize = (8, 5))
-    plt.plot(n_clusters , sum_of_squared_distance , 'o')
-    plt.plot(n_clusters , sum_of_squared_distance , '-' , alpha = 0.5)
-    plt.xlabel('Number of Clusters')
-    plt.ylabel('Inertia')
-    # plt.savefig("/Users/baeksumin/apps/electricity/image/count_of_clusters.png")
-
-change_n_clusters([2,3,4,5,6,7,8,9,10,11], df.iloc[:,1:])
-
-# 그래프 확인 결과 최적 군집 수는 4로 결정
-
-kmeans = KMeans(n_clusters=4, random_state = 2)
-km_cluster = kmeans.fit_predict(df.iloc[:,1:])
-df_clust = df.copy()
-df_clust['km_cluster'] = km_cluster
-df_clust['km_cluster'] = df_clust['km_cluster'].map({0:1, 1:3, 2:2, 3:0})
-
-data_drop = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left')
-
-# visualizing result of kmeans clustering
-# n_c = len(np.unique(df_clust.km_cluster)) 
+#     plt.savefig("/Users/baeksumin/apps/electricity/image/num_visualization_01.png")
+# # 건물별로 비슷한 전력사용량 패턴을 보이는 것이 있다는 것을 알 수 있다.
 
 
-# fig = plt.figure(figsize = (20, 4))
-# for c in range(4):
-#     temp = data_drop[data_drop.km_cluster == c]
-#     temp = temp.groupby(['weekday', 'time'])['전력사용량(kWh)'].median().reset_index().pivot('weekday', 'time', '전력사용량(kWh)')
-#     plt.subplot(1, 5, c+1)
-#     sns.heatmap(temp)
-#     plt.title(f'cluster {c}')
-#     plt.xlabel('')
-#     plt.ylabel('')
-#     plt.yticks([])
-# plt.savefig("/Users/baeksumin/apps/electricity/image/test1.png")
-
-train_ = data_drop.merge(df_clust[['num','km_cluster']], on = 'num', how = 'left')
-
-
-# 다시 군집화 
+# 군집화 
 
 data_add['time'] = data_add['time'].astype(int)
 data_add['weekday'] = data_add['weekday'].astype(int)
 
 df_list = list([])
-
 for i in range(1, 61):
     df_list.append(data_add[data_add['num'] == i].reset_index(drop = True).iloc[:, :])
 
@@ -277,27 +215,88 @@ for i in range(len(df_list)):
     we_n_avg = sum(we_n) / len(we_n)
     avg_list = [wd_d_avg, wd_n_avg, we_d_avg, we_n_avg]
     # print(avg_list.index(max(avg_list)))
+    # print(avg_list)
+    # print(max(avg_list))
 
     df_list[i]['cluster'] = avg_list.index(max(avg_list))
     # print(df_list[i]['cluster'])
+    
  
-
 df_cluster = pd.DataFrame()
 for i in range(len(df_list)):
     df_cluster = pd.concat([df_cluster, df_list[i]])
 
-fig = plt.figure(figsize = (20, 4))
-for c in range(4):
-    temp = df_cluster[df_cluster.cluster == c]
+# 군집 내 군집화
+
+con0 = df_cluster['cluster'] == 0
+cluster0 = df_cluster[con0]
+cluster0_group = cluster0.groupby(cluster0['num']).mean()
+cluster0_group = cluster0_group[['전력사용량(kWh)']]
+cluster0_group = cluster0_group.sort_values('전력사용량(kWh)')
+cluster0_group = cluster0_group.reset_index()
+cluster00 = cluster0_group.loc[(cluster0_group['전력사용량(kWh)'] < 2000)]['num'].tolist()
+cluster01 = cluster0_group.loc[((2000 < cluster0_group['전력사용량(kWh)']) & (cluster0_group['전력사용량(kWh)'] < 5000))]['num'].tolist()
+cluster02 = cluster0_group.loc[(5000 < cluster0_group['전력사용량(kWh)'])]['num'].tolist()
+
+con2 = df_cluster['cluster'] == 2
+cluster2 = df_cluster[con2]
+cluster2_group = cluster2.groupby(cluster2['num']).mean()
+cluster2_group = cluster2_group[['전력사용량(kWh)']]
+cluster2_group = cluster2_group.sort_values('전력사용량(kWh)')
+cluster2_group = cluster2_group.reset_index()
+cluster20 = cluster2_group.loc[(cluster2_group['전력사용량(kWh)'] < 2000)]['num'].tolist()
+cluster21 = cluster2_group.loc[((2000 < cluster2_group['전력사용량(kWh)']) & (cluster2_group['전력사용량(kWh)'] < 4000))]['num'].tolist()
+cluster22 = cluster2_group.loc[(4000 < cluster2_group['전력사용량(kWh)'])]['num'].tolist()
+
+con3 = df_cluster['cluster'] == 3
+cluster3 = df_cluster[con3]
+cluster3_group = cluster3.groupby(cluster3['num']).mean()
+cluster3_group = cluster3_group[['전력사용량(kWh)']]
+cluster3_group = cluster3_group.sort_values('전력사용량(kWh)')
+cluster3_group = cluster3_group.reset_index()
+cluster30 = cluster3_group.loc[(cluster3_group['전력사용량(kWh)'] < 1500)]['num'].tolist()
+cluster31 = cluster3_group.loc[(1500 < cluster3_group['전력사용량(kWh)'])]['num'].tolist()
+
+for i in range(len(df_list)):
+    if df_list[i]['num'][0] in cluster00:
+        df_list[i]['cluster'] = 0
+    elif df_list[i]['num'][0] in cluster01:
+        df_list[i]['cluster'] = 1
+    elif df_list[i]['num'][0] in cluster02:
+        df_list[i]['cluster'] = 2
+    elif df_list[i]['num'][0] in cluster20:
+        df_list[i]['cluster'] = 4
+    elif df_list[i]['num'][0] in cluster21:
+        df_list[i]['cluster'] = 5
+    elif df_list[i]['num'][0] in cluster22:
+        df_list[i]['cluster'] = 6
+    elif df_list[i]['num'][0] in cluster30:
+        df_list[i]['cluster'] = 7
+    elif df_list[i]['num'][0] in cluster31:
+        df_list[i]['cluster'] = 8
+    else:
+        df_list[i]['cluster'] = 3
+
+df_recluster = pd.DataFrame()
+for i in range(len(df_list)):
+    df_recluster = pd.concat([df_recluster, df_list[i]])
+
+
+# 군집화 시각화
+
+fig = plt.figure(figsize = (15, 2))
+for c in range(9):
+    temp = df_recluster[df_recluster.cluster == c]
     temp = temp.groupby(['weekday', 'time'])['전력사용량(kWh)'].median().reset_index().pivot('time', 'weekday', '전력사용량(kWh)')
-    plt.subplot(1, 5, c+1)
+
+    plt.subplot(1, 10, c+1)
     sns.heatmap(temp)
     plt.title(f'cluster {c}')
     plt.xlabel('')
     plt.ylabel('')
     plt.yticks([])
-# plt.savefig("/Users/baeksumin/apps/electricity/image/test2.png")
-    
+plt.savefig("/Users/baeksumin/apps/electricity/image/test3.png")
+
 
 # prophet이 포맷으로 rename 
 # train_['datetime'] = pd.to_datetime(train_['date'].str.cat(train_['time'], sep='-'))
@@ -324,7 +323,7 @@ train_list = list([])
 for i in range(0,4):
     train_list.append(df_cluster[df_cluster['add9'] == i].reset_index(drop = True).iloc[:, 1:])
 
-# default model
+# # default model
 
 # for i in range(4):
 #     model = Prophet(
@@ -341,8 +340,10 @@ for i in range(0,4):
 #     MSE = np.square(np.subtract(y_true,y_pred)).mean() 
     
 #     print(MSE) 
-#     # default 모델 사용했을때 5115003.44164709
-#     # 두번째 군집화 후 default 모델 사용했을때, 5979302, 8402, 2477111, 847640 
+    
+    
+    # default 모델 사용했을때 5115003.44164709
+    # 두번째 군집화 후 default 모델 사용했을때, 5979302, 8402, 2477111, 847640 
 
 # # tuning
 # optimum_df = pd.DataFrame([], columns = ['cluster', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse'])
@@ -363,46 +364,44 @@ for i in range(0,4):
 
 # optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
 
-# qr = train_list[1][train_list[1]['ds'] >= '2020-08-18'][['ds','y']].reset_index(drop = True)
-# print(qr)
 
-# read optimum
-optimum_df = pd.read_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/20211123.csv', encoding = 'UTF-8')
+# # read optimum
+# optimum_df = pd.read_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/20211123.csv', encoding = 'UTF-8')
 
-# 모델 학습
-answer_list = list([])
-for i in tqdm(range(len(optimum_df))):
-    cps = optimum_df.loc[i, 'changepoint_prior_scale']
-    sps = optimum_df.loc[i, 'seasonality_prior_scale']
-    sm = optimum_df.loc[i, 'seasonality_mode']
-    hps = optimum_df.loc[i, 'holidays_prior_scale']
-    model = Prophet(
-        changepoint_prior_scale = cps,
-        seasonality_prior_scale = sps,
-        seasonality_mode = sm,
-        holidays_prior_scale = hps,
-        holidays = holiday
-    ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)\
-        .add_regressor('add1')\
-        .add_regressor('add2')\
-        .add_regressor('add3')\
-        .add_regressor('add4')\
-        .add_regressor('add5')\
-        .add_regressor('add6')\
-        .add_regressor('add7')\
-        .add_regressor('add8')
-    model.fit(train_df_list[i])
+# # 모델 학습
+# answer_list = list([])
+# for i in tqdm(range(len(optimum_df))):
+#     cps = optimum_df.loc[i, 'changepoint_prior_scale']
+#     sps = optimum_df.loc[i, 'seasonality_prior_scale']
+#     sm = optimum_df.loc[i, 'seasonality_mode']
+#     hps = optimum_df.loc[i, 'holidays_prior_scale']
+#     model = Prophet(
+#         changepoint_prior_scale = cps,
+#         seasonality_prior_scale = sps,
+#         seasonality_mode = sm,
+#         holidays_prior_scale = hps,
+#         holidays = holiday
+#     ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)\
+#         .add_regressor('add1')\
+#         .add_regressor('add2')\
+#         .add_regressor('add3')\
+#         .add_regressor('add4')\
+#         .add_regressor('add5')\
+#         .add_regressor('add6')\
+#         .add_regressor('add7')\
+#         .add_regressor('add8')
+#     model.fit(train_df_list[i])
 
     
-    # 예측
-    true_y = train_list[i][train_list[i]['ds'] >= '2020-08-18'][['ds','y']].reset_index(drop = True)
-    forecast = model.predict(test_df_list[i])
-    answer_list = answer_list + list(forecast['yhat'])
+#     # 예측
+#     true_y = train_list[i][train_list[i]['ds'] >= '2020-08-18'][['ds','y']].reset_index(drop = True)
+#     forecast = model.predict(test_df_list[i])
+#     answer_list = answer_list + list(forecast['yhat'])
     
-    model.plot(forecast)
-    plt.plot(true_y['ds'], true_y['y'], 'r')
+#     model.plot(forecast)
+#     plt.plot(true_y['ds'], true_y['y'], 'r')
 
-    plt.savefig('/Users/baeksumin/apps/electricity/image/test_energy_future_{}_{}.png'.format(i + 1, today_))
+#     plt.savefig('/Users/baeksumin/apps/electricity/image/test_energy_future_{}_{}.png'.format(i + 1, today_))
 
 
 
