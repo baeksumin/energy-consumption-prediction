@@ -60,9 +60,7 @@ for month in range(6,9):
             locdate = str(i.locdate.string)
             datename = str(i.datename.string)
             loc_date.append(locdate)
-            date_name.append(datename)
-# print(loc_date)
-# print(date_name)            
+            date_name.append(datename)     
 # 20200606, 20200815, 20200817 공휴일 확인
 
 # prophet이 원하는 형태로 공휴일 데이터 가공
@@ -131,7 +129,7 @@ today = date.today()
 today_ = re.sub('-', '', str(today))
 
 # 데이터 확인
-# data.info() 
+print(data.info())
 
 # date_time 컬럼의 데이터 분할 (date, time)
 data['time'] = data.date_time.str.split(' ').str[-1]
@@ -140,15 +138,15 @@ data = data[['num', 'date_time', 'date', 'time', '전력사용량(kWh)', '기온
 
 # 건물별로 데이터 정렬
 data_sort = data.sort_values(by=["num", "date"], ascending=[True, True], ignore_index=True)
-# print(data_sort.tail(50))
 
-# # 상관관계 분석
-# data_corr = data[['전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '강수량(mm)', '일조(hr)', '비전기냉방설비운영', '태양광보유' ]]
-# rc('axes', unicode_minus=False) # 폰트 에러 문제 해결
-# rc('font', family='AppleGothic') # 폰트 에러 문제 해결
-# plt.figure(figsize=(15,10))
-# hm = sns.heatmap(data_corr.corr(), annot = True, vmin=-1, vmax=1, center= 0, cmap= 'coolwarm')
-# # hm.get_figure().savefig("/Users/baeksumin/apps/electricity/image/heatmap.png")
+
+# 상관관계 분석
+data_corr = data[['전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '강수량(mm)', '일조(hr)', '비전기냉방설비운영', '태양광보유' ]]
+rc('axes', unicode_minus=False) # 폰트 에러 문제 해결
+rc('font', family='AppleGothic') # 폰트 에러 문제 해결
+plt.figure(figsize=(15,10))
+hm = sns.heatmap(data_corr.corr(), annot = True, vmin=-1, vmax=1, center= 0, cmap= 'coolwarm')
+hm.get_figure().savefig("/Users/baeksumin/apps/electricity/image/heatmap.png")
 
 
 # 필요한 컬럼 추가
@@ -159,22 +157,21 @@ data['weekday'] = data['date_time'].dt.weekday # 월:0, 화:1, 수:2, 목:3, 금
 data_add = data[['num', 'date_time', 'date', 'weekday', 'time', '전력사용량(kWh)', '기온(°C)', '풍속(m/s)', '습도(%)', '강수량(mm)', '일조(hr)', '불쾌지수', '체감온도', '비전기냉방설비운영', '태양광보유']]
 
 # 필요하지 않은 컬럼 제거
-# 상관분석 결과, 전력사용량과 가장 상관도가 적은 '강수량' 컬럼 삭제
-data_drop = data_add.drop(['강수량(mm)'], axis = 1)
+data_drop = data_add.drop(['강수량(mm)'], axis = 1) # 상관분석 결과, 전력사용량과 가장 상관도가 적은 '강수량' 컬럼 삭제
 
-# # 시각화 - 건물별 전력사용량 패턴 알기
-# fig = plt.figure(figsize = (15, 40))
-# for num in data_drop['num'].unique():
-#     df = data_drop[data_drop.num == num]
-#     df = df.groupby(['weekday', 'time'])['전력사용량(kWh)'].mean().reset_index().pivot('time', 'weekday', '전력사용량(kWh)')
-#     plt.subplot(12, 5, num)
-#     sns.heatmap(df)
-#     plt.title(f'building {num}')
-#     plt.xlabel('')
-#     plt.ylabel('')
-#     plt.yticks([])
-#     plt.savefig("/Users/baeksumin/apps/electricity/image/num_visualization_01.png")
-# # 건물별로 비슷한 전력사용량 패턴을 보이는 것이 있다는 것을 알 수 있다.
+# 시각화 - 건물별 전력사용량 패턴 알기
+fig = plt.figure(figsize = (15, 40))
+for num in data_drop['num'].unique():
+    df = data_drop[data_drop.num == num]
+    df = df.groupby(['weekday', 'time'])['전력사용량(kWh)'].mean().reset_index().pivot('time', 'weekday', '전력사용량(kWh)')
+    plt.subplot(12, 5, num)
+    sns.heatmap(df)
+    plt.title(f'building {num}')
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.yticks([])
+    plt.savefig("/Users/baeksumin/apps/electricity/image/num_visualization_01.png")
+# 건물별로 비슷한 전력사용량 패턴을 보이는 것이 있다는 것을 알 수 있다.
 
 
 # 군집화 
@@ -225,6 +222,7 @@ for i in range(len(df_list)):
 df_cluster = pd.DataFrame()
 for i in range(len(df_list)):
     df_cluster = pd.concat([df_cluster, df_list[i]])
+
 
 # 군집 내 군집화
 
@@ -303,7 +301,7 @@ df_recluster = df_recluster[['num', 'date_time', '전력사용량(kWh)', '기온
 df_recluster = df_recluster.rename(columns = {'date_time': 'ds', '전력사용량(kWh)': 'y', '기온(°C)' : 'add1', '풍속(m/s)': 'add2', '습도(%)': 'add3', '일조(hr)': 'add4', '불쾌지수': 'add5', '체감온도': 'add6','비전기냉방설비운영': 'add7', '태양광보유': 'add8', 'cluster' : 'add9'})
 
 df_recluster = df_recluster.sort_values(by=["ds", "num"], ascending=[True, True], ignore_index=True)
-# print(last_data)
+
 
 train = df_recluster.loc[:112319] # 20200601~20200817
 test = df_recluster.loc[112320:] # 20200818~20200824
@@ -318,45 +316,45 @@ train_list = list([])
 for i in range(0, 9):
     train_list.append(df_recluster[df_recluster['add9'] == i].reset_index(drop = True).iloc[:, 1:])
 
-# # default model
+# default model
 
-# for i in range(0,9):
-#     model = Prophet(
-#         yearly_seasonality = False,
-#         holidays = holiday,
-#     ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)
-#     model.fit(train_df_list[i])
+for i in range(0,9):
+    model = Prophet(
+        yearly_seasonality = False,
+        holidays = holiday,
+    ).add_seasonality(name = 'monthly', period = 30.5, fourier_order = 5)
+    model.fit(train_df_list[i])
 
-#     forecast = model.predict(test_df_list[i])
-#     model.plot(forecast)
-#     plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}_20211128.png'.format(i + 1))
-#     y_true = list(test_df_list[i]['y'])
-#     y_pred = list(forecast['yhat'])
-#     MSE = np.square(np.subtract(y_true,y_pred)).mean() 
+    forecast = model.predict(test_df_list[i])
+    model.plot(forecast)
+    plt.savefig('/Users/baeksumin/apps/electricity/image/energy_future_{}_20211128.png'.format(i + 1))
+    y_true = list(test_df_list[i]['y'])
+    y_pred = list(forecast['yhat'])
+    MSE = np.square(np.subtract(y_true,y_pred)).mean() 
 
-#     print(MSE) 
+    print(MSE) 
 
     # 군집화 후 default 모델 사용했을때, 5979302, 8402, 2477111, 847640 
     # 군집 내 군집화 후 default 모델 사용했을때, 359930, 517726, 5830013, 8402, 352623, 953409, 680317, 4685, 228111
 
-# # tuning
-# optimum_df = pd.DataFrame([], columns = ['cluster', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse'])
-# for idx, val in enumerate(train_list):
-#     ttrain = val[val['ds'] < '2020-08-18']
-#     ttest = pd.DataFrame(val[val['ds'] >= '2020-08-18'].drop(['y'], axis = 1).reset_index(drop = True))
-#     ttest_y = val[val['ds'] >= '2020-08-18']['y'].reset_index(drop = True)
+# parameter tuning
+optimum_df = pd.DataFrame([], columns = ['cluster', 'changepoint_prior_scale', 'seasonality_prior_scale', 'seasonality_mode', 'holidays_prior_scale', 'mse'])
+for idx, val in enumerate(train_list):
+    ttrain = val[val['ds'] < '2020-08-18']
+    ttest = pd.DataFrame(val[val['ds'] >= '2020-08-18'].drop(['y'], axis = 1).reset_index(drop = True))
+    ttest_y = val[val['ds'] >= '2020-08-18']['y'].reset_index(drop = True)
 
-#     mse_df, min_mse = tuning(ttrain, ttest, ttest_y, [0.001, 0.01, 0.1, 0.5], [0.01, 0.1, 1, 10], ['additive', 'multiplicative'], [0.01, 0.1, 1, 10], holiday)
-#     print('========================================== cluster {} result =========================================='.format(idx + 1))
-#     print(min_mse)
-#     print('=====================================================================================================')
-#     mse_df.to_csv('/Users/baeksumin/apps/electricity/dataset/mse_df/cluster_{}_{}.csv'.format(idx + 1, today_), encoding = 'UTF-8', index = False)
-#     num = pd.DataFrame([idx + 1], columns = ['num'])
-#     print('/n', '---------------------------------', num, '---------------------------------', '/n')
-#     num_min_mse = pd.concat([num, min_mse], axis = 1)
-#     optimum_df = pd.concat([optimum_df, num_min_mse], axis = 0).reset_index(drop = True)
+    mse_df, min_mse = tuning(ttrain, ttest, ttest_y, [0.001, 0.01, 0.1, 0.5], [0.01, 0.1, 1, 10], ['additive', 'multiplicative'], [0.01, 0.1, 1, 10], holiday)
+    print('========================================== cluster {} result =========================================='.format(idx + 1))
+    print(min_mse)
+    print('=====================================================================================================')
+    mse_df.to_csv('/Users/baeksumin/apps/electricity/dataset/mse_df/cluster_{}_{}.csv'.format(idx + 1, today_), encoding = 'UTF-8', index = False)
+    num = pd.DataFrame([idx + 1], columns = ['num'])
+    print('/n', '---------------------------------', num, '---------------------------------', '/n')
+    num_min_mse = pd.concat([num, min_mse], axis = 1)
+    optimum_df = pd.concat([optimum_df, num_min_mse], axis = 0).reset_index(drop = True)
 
-# optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
+optimum_df.to_csv('/Users/baeksumin/apps/electricity/dataset/optimum_df/{}.csv'.format(today_), encoding = 'UTF-8', index = False)
 
 
 # read optimum
