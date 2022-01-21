@@ -10,7 +10,8 @@ Facebook Prophet 모델을 사용하여 건물별 전력사용량을 예측한�
 
 > 실행환경
 
-Python 3.8
+사용언어 - Python 3.8 <br>
+Tool - Visual Studio Code
 
 ---
 
